@@ -8,6 +8,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import Index from "./pages/Index";
 import TripDetail from "./pages/TripDetail";
 import Wishlist from "./pages/Wishlist";
+import Calendar from "./pages/Calendar";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
               <Route index element={<Index />} />
               <Route path="/trip/:id" element={<TripDetail />} />
               <Route path="/wishlist" element={<Wishlist />} />
+              <Route path="/calendar" element={<Calendar />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
