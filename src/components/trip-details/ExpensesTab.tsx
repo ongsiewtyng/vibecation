@@ -14,7 +14,7 @@ const ExpensesTab = ({ tripId, budget }: { tripId: string; budget: number | null
     },
   });
 
-  const total = items.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+  const total = items.reduce((sum, item) => sum + Number(item.amount), 0);
 
   return (
     <div className="space-y-4">
