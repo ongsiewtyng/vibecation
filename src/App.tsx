@@ -10,6 +10,7 @@ import TripDetail from "./pages/TripDetail";
 import Wishlist from "./pages/Wishlist";
 import Calendar from "./pages/Calendar";
 import Explore from "./pages/Explore";
+import SharedTripView from "./pages/SharedTripView";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/explore" element={<Explore />} />
             </Route>
+            <Route path="/shared/:token" element={<SharedTripView />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

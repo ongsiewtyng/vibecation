@@ -10,10 +10,25 @@ import { COUNTRIES } from "@/config/maps";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import GoogleMapComponent from "@/components/maps/GoogleMapComponent";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const Explore = () => {
   const [selectedCountry, setSelectedCountry] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedAttraction, setSelectedAttraction] = useState<any>(null);
+  const [showTripDialog, setShowTripDialog] = useState(false);
+
+  const { data: trips = [] } = useQuery({
+    queryKey: ["trips"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("trips")
+        .select("*")
+        .order("start_date", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { data: attractions = [], refetch } = useQuery({
     queryKey: ["attractions", selectedCountry],
@@ -38,14 +53,21 @@ const Explore = () => {
       return;
     }
 
-    // This would normally call Google Places API through an edge function
-    // For now, we'll show a message
     toast.info("Fetching attractions for " + selectedCountry);
     
-    // Example: In production, you'd call an edge function that uses Google Places API
-    // const { data, error } = await supabase.functions.invoke('fetch-attractions', {
-    //   body: { country: selectedCountry }
-    // });
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-attractions', {
+        body: { country: selectedCountry }
+      });
+
+      if (error) throw error;
+      
+      toast.success(`Fetched ${data.attractions?.length || 0} attractions`);
+      refetch();
+    } catch (error) {
+      console.error('Error fetching attractions:', error);
+      toast.error("Failed to fetch attractions");
+    }
   };
 
   const filteredAttractions = attractions.filter((attraction) =>
@@ -170,7 +192,15 @@ const Explore = () => {
                           ))}
                         </div>
                       )}
-                      <Button variant="outline" className="w-full" size="sm">
+                      <Button 
+                        variant="outline" 
+                        className="w-full" 
+                        size="sm"
+                        onClick={() => {
+                          setSelectedAttraction(attraction);
+                          setShowTripDialog(true);
+                        }}
+                      >
                         <Plus className="mr-2 h-4 w-4" />
                         Add to Trip
                       </Button>
@@ -199,6 +229,55 @@ const Explore = () => {
           </div>
         )}
       </div>
+
+      <Dialog open={showTripDialog} onOpenChange={setShowTripDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add to Trip</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Select a trip to add "{selectedAttraction?.name}" to its itinerary
+            </p>
+            <div className="space-y-2">
+              {trips.map((trip) => (
+                <Button
+                  key={trip.id}
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={async () => {
+                    try {
+                      const { error } = await supabase.from("itinerary_items").insert({
+                        trip_id: trip.id,
+                        title: selectedAttraction.name,
+                        description: selectedAttraction.description,
+                        location: selectedAttraction.name,
+                        date: trip.start_date,
+                        day_number: 1,
+                      });
+
+                      if (error) throw error;
+
+                      toast.success(`Added to ${trip.title}`);
+                      setShowTripDialog(false);
+                    } catch (error) {
+                      console.error("Error adding to trip:", error);
+                      toast.error("Failed to add to trip");
+                    }
+                  }}
+                >
+                  <div className="text-left">
+                    <p className="font-medium">{trip.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {trip.destination}, {trip.country}
+                    </p>
+                  </div>
+                </Button>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

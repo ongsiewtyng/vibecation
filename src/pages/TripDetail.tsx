@@ -16,6 +16,8 @@ import AttachmentsTab from "@/components/trip-details/AttachmentsTab";
 import TripTimeline from "@/components/trip-details/TripTimeline";
 import TripSharingDialog from "@/components/sharing/TripSharingDialog";
 import { format, differenceInDays } from "date-fns";
+import GoogleMapComponent from "@/components/maps/GoogleMapComponent";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const TripDetail = () => {
   const { id } = useParams();
@@ -36,6 +38,42 @@ const TripDetail = () => {
     },
   });
 
+  const { data: accommodations = [] } = useQuery({
+    queryKey: ["accommodations", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("accommodations")
+        .select("*")
+        .eq("trip_id", id);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: transports = [] } = useQuery({
+    queryKey: ["transports", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("transports")
+        .select("*")
+        .eq("trip_id", id);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: itineraryItems = [] } = useQuery({
+    queryKey: ["itinerary", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("itinerary_items")
+        .select("*")
+        .eq("trip_id", id);
+      if (error) throw error;
+      return data;
+    },
+  });
+
   if (!trip) {
     return <div className="p-6">Loading...</div>;
   }
@@ -44,6 +82,26 @@ const TripDetail = () => {
     new Date(trip.end_date),
     new Date(trip.start_date)
   );
+
+  // Prepare map markers
+  const mapMarkers = [
+    ...accommodations
+      .filter((a) => a.address)
+      .map((a) => ({
+        position: { lat: 0, lng: 0 }, // You'd need to geocode addresses
+        title: a.name,
+      })),
+    ...itineraryItems
+      .filter((i) => i.location)
+      .map((i) => ({
+        position: { lat: 0, lng: 0 }, // You'd need to geocode locations
+        title: i.title,
+      })),
+  ];
+
+  const mapCenter = trip.destination 
+    ? { lat: 0, lng: 0 } // You'd geocode the destination
+    : { lat: 0, lng: 0 };
 
   return (
     <div className="min-h-screen bg-background">
@@ -78,6 +136,21 @@ const TripDetail = () => {
       </header>
 
       <div className="container mx-auto p-6">
+        {/* Map View */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Trip Map</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <GoogleMapComponent
+              center={mapCenter}
+              zoom={10}
+              markers={mapMarkers}
+              className="w-full h-96 rounded-lg"
+            />
+          </CardContent>
+        </Card>
+
         <Tabs defaultValue="itinerary" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 lg:w-auto">
             <TabsTrigger value="itinerary">Itinerary</TabsTrigger>
