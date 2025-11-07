@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Upload, Calendar, Plane, MapPin, Navigation } from "lucide-react";
+import { Plus, Upload, Calendar, Plane, MapPin, Navigation, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import TripCard from "@/components/trips/TripCard";
 import TripFormDialog from "@/components/trips/TripFormDialog";
@@ -13,6 +15,8 @@ const Index = () => {
   const [showTripForm, setShowTripForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [editingTrip, setEditingTrip] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"all" | "upcoming" | "current" | "past">("all");
 
   const { data: trips = [], refetch } = useQuery({
     queryKey: ["trips"],
@@ -27,12 +31,31 @@ const Index = () => {
     },
   });
 
-  const upcomingTrips = trips.filter((trip) => isFuture(new Date(trip.start_date)));
-  const pastTrips = trips.filter((trip) => isPast(new Date(trip.end_date)));
-  const currentTrips = trips.filter(
+  // Filter by search query
+  const filteredTrips = trips.filter((trip) => {
+    const matchesSearch =
+      trip.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      trip.destination.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      trip.country.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
+  });
+
+  const upcomingTrips = filteredTrips.filter((trip) => isFuture(new Date(trip.start_date)));
+  const pastTrips = filteredTrips.filter((trip) => isPast(new Date(trip.end_date)));
+  const currentTrips = filteredTrips.filter(
     (trip) =>
       !isFuture(new Date(trip.start_date)) && !isPast(new Date(trip.end_date))
   );
+
+  // Apply status filter
+  const displayTrips =
+    filterStatus === "all"
+      ? filteredTrips
+      : filterStatus === "upcoming"
+      ? upcomingTrips
+      : filterStatus === "current"
+      ? currentTrips
+      : pastTrips;
 
   const handleEdit = (trip: any) => {
     setEditingTrip(trip);
@@ -71,6 +94,30 @@ const Index = () => {
       </header>
 
       <div className="container mx-auto p-6 space-y-8">
+        {/* Search and Filter */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search trips by title, destination, or country..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as any)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Trips</SelectItem>
+              <SelectItem value="current">Current Trips</SelectItem>
+              <SelectItem value="upcoming">Upcoming Trips</SelectItem>
+              <SelectItem value="past">Past Trips</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Stats Overview */}
         <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-xl border border-border bg-card p-6 shadow-soft">
@@ -108,46 +155,62 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Current Trips */}
-        {currentTrips.length > 0 && (
-          <section>
-            <h2 className="text-xl font-semibold mb-4">Current Trips</h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {currentTrips.map((trip) => (
-                <TripCard
-                  key={trip.id}
-                  trip={trip}
-                  onEdit={handleEdit}
-                  onRefetch={refetch}
-                />
-              ))}
-            </div>
-          </section>
-        )}
+        {/* Filtered Trips */}
+        {filterStatus === "all" ? (
+          <>
+            {currentTrips.length > 0 && (
+              <section>
+                <h2 className="text-xl font-semibold mb-4">Current Trips</h2>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {currentTrips.map((trip) => (
+                    <TripCard
+                      key={trip.id}
+                      trip={trip}
+                      onEdit={handleEdit}
+                      onRefetch={refetch}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
 
-        {/* Upcoming Trips */}
-        {upcomingTrips.length > 0 && (
-          <section>
-            <h2 className="text-xl font-semibold mb-4">Upcoming Trips</h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {upcomingTrips.map((trip) => (
-                <TripCard
-                  key={trip.id}
-                  trip={trip}
-                  onEdit={handleEdit}
-                  onRefetch={refetch}
-                />
-              ))}
-            </div>
-          </section>
-        )}
+            {upcomingTrips.length > 0 && (
+              <section>
+                <h2 className="text-xl font-semibold mb-4">Upcoming Trips</h2>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {upcomingTrips.map((trip) => (
+                    <TripCard
+                      key={trip.id}
+                      trip={trip}
+                      onEdit={handleEdit}
+                      onRefetch={refetch}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
 
-        {/* Past Trips */}
-        {pastTrips.length > 0 && (
+            {pastTrips.length > 0 && (
+              <section>
+                <h2 className="text-xl font-semibold mb-4">Past Trips</h2>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {pastTrips.map((trip) => (
+                    <TripCard
+                      key={trip.id}
+                      trip={trip}
+                      onEdit={handleEdit}
+                      onRefetch={refetch}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
+        ) : (
           <section>
-            <h2 className="text-xl font-semibold mb-4">Past Trips</h2>
+            <h2 className="text-xl font-semibold mb-4 capitalize">{filterStatus} Trips</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {pastTrips.map((trip) => (
+              {displayTrips.map((trip) => (
                 <TripCard
                   key={trip.id}
                   trip={trip}

@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { COUNTRIES } from "@/config/maps";
 
 interface TripFormDialogProps {
   open: boolean;
@@ -116,14 +118,24 @@ const TripFormDialog = ({ open, onClose, trip, onSuccess }: TripFormDialogProps)
 
           <div className="space-y-2">
             <Label htmlFor="country">Country *</Label>
-            <Input
-              id="country"
+            <Select
               value={formData.country}
-              onChange={(e) =>
-                setFormData({ ...formData, country: e.target.value })
+              onValueChange={(value) =>
+                setFormData({ ...formData, country: value })
               }
               required
-            />
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a country" />
+              </SelectTrigger>
+              <SelectContent>
+                {COUNTRIES.map((country) => (
+                  <SelectItem key={country.code} value={country.name}>
+                    {country.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">

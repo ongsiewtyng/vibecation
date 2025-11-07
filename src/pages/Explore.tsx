@@ -1,0 +1,206 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Search, MapPin, Star, Plus } from "lucide-react";
+import { COUNTRIES } from "@/config/maps";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import GoogleMapComponent from "@/components/maps/GoogleMapComponent";
+
+const Explore = () => {
+  const [selectedCountry, setSelectedCountry] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const { data: attractions = [], refetch } = useQuery({
+    queryKey: ["attractions", selectedCountry],
+    queryFn: async () => {
+      if (!selectedCountry) return [];
+      
+      const { data, error } = await supabase
+        .from("attractions")
+        .select("*")
+        .eq("country", selectedCountry)
+        .order("rating", { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedCountry,
+  });
+
+  const handleFetchAttractions = async () => {
+    if (!selectedCountry) {
+      toast.error("Please select a country");
+      return;
+    }
+
+    // This would normally call Google Places API through an edge function
+    // For now, we'll show a message
+    toast.info("Fetching attractions for " + selectedCountry);
+    
+    // Example: In production, you'd call an edge function that uses Google Places API
+    // const { data, error } = await supabase.functions.invoke('fetch-attractions', {
+    //   body: { country: selectedCountry }
+    // });
+  };
+
+  const filteredAttractions = attractions.filter((attraction) =>
+    attraction.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const mapCenter = attractions.length > 0 && attractions[0].lat && attractions[0].lng
+    ? { lat: Number(attractions[0].lat), lng: Number(attractions[0].lng) }
+    : { lat: 0, lng: 0 };
+
+  const markers = filteredAttractions
+    .filter((a) => a.lat && a.lng)
+    .map((attraction) => ({
+      position: { lat: Number(attraction.lat), lng: Number(attraction.lng) },
+      title: attraction.name,
+    }));
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-4">
+            <SidebarTrigger />
+            <div>
+              <h1 className="text-2xl font-bold">Explore Destinations</h1>
+              <p className="text-sm text-muted-foreground">
+                Discover popular attractions and landmarks
+              </p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="container mx-auto p-6 space-y-6">
+        {/* Search and Filter */}
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Select Country</label>
+                <Select value={selectedCountry} onValueChange={setSelectedCountry}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COUNTRIES.map((country) => (
+                      <SelectItem key={country.code} value={country.name}>
+                        {country.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Search Attractions</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+            </div>
+            <Button onClick={handleFetchAttractions} disabled={!selectedCountry}>
+              <Search className="mr-2 h-4 w-4" />
+              Fetch Attractions from Google Places
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Map View */}
+        {selectedCountry && attractions.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Map View</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <GoogleMapComponent
+                center={mapCenter}
+                zoom={10}
+                markers={markers}
+                className="w-full h-96 rounded-lg"
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Attractions Grid */}
+        {selectedCountry && (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredAttractions.length > 0 ? (
+              filteredAttractions.map((attraction) => (
+                <Card key={attraction.id}>
+                  <CardContent className="p-6">
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between">
+                        <h3 className="font-semibold text-lg">{attraction.name}</h3>
+                        {attraction.rating && (
+                          <div className="flex items-center gap-1 text-sm">
+                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                            <span>{attraction.rating}</span>
+                          </div>
+                        )}
+                      </div>
+                      {attraction.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-3">
+                          {attraction.description}
+                        </p>
+                      )}
+                      {attraction.types && attraction.types.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {attraction.types.slice(0, 3).map((type, idx) => (
+                            <span
+                              key={idx}
+                              className="text-xs px-2 py-1 bg-secondary rounded-full"
+                            >
+                              {type.replace(/_/g, " ")}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <Button variant="outline" className="w-full" size="sm">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add to Trip
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">
+                  No attractions found. Click "Fetch Attractions" to load data.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!selectedCountry && (
+          <div className="text-center py-16">
+            <MapPin className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Explore the World</h3>
+            <p className="text-muted-foreground mb-6">
+              Select a country to discover popular destinations and attractions
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Explore;

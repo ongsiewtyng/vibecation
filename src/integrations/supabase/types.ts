@@ -99,6 +99,48 @@ export type Database = {
           },
         ]
       }
+      attractions: {
+        Row: {
+          country: string
+          created_at: string | null
+          description: string | null
+          id: string
+          lat: number | null
+          lng: number | null
+          name: string
+          photo_reference: string | null
+          place_id: string | null
+          rating: number | null
+          types: string[] | null
+        }
+        Insert: {
+          country: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          name: string
+          photo_reference?: string | null
+          place_id?: string | null
+          rating?: number | null
+          types?: string[] | null
+        }
+        Update: {
+          country?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          name?: string
+          photo_reference?: string | null
+          place_id?: string | null
+          rating?: number | null
+          types?: string[] | null
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number
@@ -219,6 +261,41 @@ export type Database = {
           },
         ]
       }
+      public_trip_links: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          share_token: string
+          trip_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          share_token: string
+          trip_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          share_token?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_trip_links_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: true
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transports: {
         Row: {
           arrival_time: string | null
@@ -269,6 +346,41 @@ export type Database = {
           },
         ]
       }
+      trip_shares: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          role: Database["public"]["Enums"]["trip_share_role"]
+          shared_with_email: string
+          trip_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["trip_share_role"]
+          shared_with_email: string
+          trip_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["trip_share_role"]
+          shared_with_email?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_shares_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trips: {
         Row: {
           budget: number | null
@@ -278,6 +390,7 @@ export type Database = {
           end_date: string
           id: string
           notes: string | null
+          owner_id: string | null
           start_date: string
           title: string
           updated_at: string
@@ -290,6 +403,7 @@ export type Database = {
           end_date: string
           id?: string
           notes?: string | null
+          owner_id?: string | null
           start_date: string
           title: string
           updated_at?: string
@@ -302,6 +416,7 @@ export type Database = {
           end_date?: string
           id?: string
           notes?: string | null
+          owner_id?: string | null
           start_date?: string
           title?: string
           updated_at?: string
@@ -346,7 +461,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      trip_share_role: "viewer" | "editor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -473,6 +588,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      trip_share_role: ["viewer", "editor"],
+    },
   },
 } as const

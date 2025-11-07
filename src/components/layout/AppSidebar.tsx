@@ -1,4 +1,4 @@
-import { Home, Map, Heart, Moon, Sun, Menu } from "lucide-react";
+import { Home, Map, Heart, Moon, Sun, Menu, Calendar, Compass } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useTheme } from "@/components/ThemeProvider";
@@ -19,6 +19,8 @@ import {
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: Home },
+  { title: "Calendar", url: "/calendar", icon: Calendar },
+  { title: "Explore", url: "/explore", icon: Compass },
   { title: "Wishlist", url: "/wishlist", icon: Heart },
 ];
 

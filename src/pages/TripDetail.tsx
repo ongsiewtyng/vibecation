@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Share2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ItineraryTab from "@/components/trip-details/ItineraryTab";
 import AccommodationsTab from "@/components/trip-details/AccommodationsTab";
@@ -12,11 +13,14 @@ import TransportTab from "@/components/trip-details/TransportTab";
 import ExpensesTab from "@/components/trip-details/ExpensesTab";
 import PackingTab from "@/components/trip-details/PackingTab";
 import AttachmentsTab from "@/components/trip-details/AttachmentsTab";
+import TripTimeline from "@/components/trip-details/TripTimeline";
+import TripSharingDialog from "@/components/sharing/TripSharingDialog";
 import { format, differenceInDays } from "date-fns";
 
 const TripDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [showSharing, setShowSharing] = useState(false);
 
   const { data: trip } = useQuery({
     queryKey: ["trip", id],
@@ -45,15 +49,21 @@ const TripDetail = () => {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="px-6 py-4">
-          <div className="flex items-center gap-4 mb-4">
-            <SidebarTrigger />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/")}
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <SidebarTrigger />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/")}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+            </div>
+            <Button onClick={() => setShowSharing(true)} variant="outline">
+              <Share2 className="mr-2 h-4 w-4" />
+              Share Trip
             </Button>
           </div>
           <div>
@@ -69,8 +79,9 @@ const TripDetail = () => {
 
       <div className="container mx-auto p-6">
         <Tabs defaultValue="itinerary" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 lg:w-auto">
+          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 lg:w-auto">
             <TabsTrigger value="itinerary">Itinerary</TabsTrigger>
+            <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="accommodations">Stays</TabsTrigger>
             <TabsTrigger value="transport">Transport</TabsTrigger>
             <TabsTrigger value="expenses">Budget</TabsTrigger>
@@ -80,6 +91,10 @@ const TripDetail = () => {
 
           <TabsContent value="itinerary">
             <ItineraryTab tripId={id!} trip={trip} />
+          </TabsContent>
+
+          <TabsContent value="timeline">
+            <TripTimeline tripId={id!} />
           </TabsContent>
 
           <TabsContent value="accommodations">
@@ -103,6 +118,12 @@ const TripDetail = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      <TripSharingDialog
+        open={showSharing}
+        onClose={() => setShowSharing(false)}
+        tripId={id!}
+      />
     </div>
   );
 };
