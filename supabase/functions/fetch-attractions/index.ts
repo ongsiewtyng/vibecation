@@ -99,9 +99,18 @@ serve(async (req) => {
 
     // Step 3: Sort by score and take top 20
     enrichedAttractions.sort((a, b) => b.score - a.score);
-    const topAttractions = enrichedAttractions.slice(0, 20);
+    
+    // Deduplicate by place_id (keep highest scored ones)
+    const uniqueAttractions = new Map();
+    for (const attraction of enrichedAttractions) {
+      if (!uniqueAttractions.has(attraction.place_id)) {
+        uniqueAttractions.set(attraction.place_id, attraction);
+      }
+    }
+    
+    const topAttractions = Array.from(uniqueAttractions.values()).slice(0, 20);
 
-    console.log(`Enriched ${topAttractions.length} attractions, top score: ${topAttractions[0]?.score || 0}`);
+    console.log(`Enriched ${topAttractions.length} unique attractions, top score: ${topAttractions[0]?.score || 0}`);
 
     // Remove score before storing in database
     const attractionsToStore = topAttractions.map(({ score, ...attraction }) => attraction);
