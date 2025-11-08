@@ -104,6 +104,7 @@ export type Database = {
           country: string
           created_at: string | null
           description: string | null
+          formatted_address: string | null
           id: string
           lat: number | null
           lng: number | null
@@ -111,12 +112,14 @@ export type Database = {
           photo_reference: string | null
           place_id: string | null
           rating: number | null
-          types: string[] | null
+          types: Json | null
+          user_ratings_total: number | null
         }
         Insert: {
           country: string
           created_at?: string | null
           description?: string | null
+          formatted_address?: string | null
           id?: string
           lat?: number | null
           lng?: number | null
@@ -124,12 +127,14 @@ export type Database = {
           photo_reference?: string | null
           place_id?: string | null
           rating?: number | null
-          types?: string[] | null
+          types?: Json | null
+          user_ratings_total?: number | null
         }
         Update: {
           country?: string
           created_at?: string | null
           description?: string | null
+          formatted_address?: string | null
           id?: string
           lat?: number | null
           lng?: number | null
@@ -137,7 +142,8 @@ export type Database = {
           photo_reference?: string | null
           place_id?: string | null
           rating?: number | null
-          types?: string[] | null
+          types?: Json | null
+          user_ratings_total?: number | null
         }
         Relationships: []
       }

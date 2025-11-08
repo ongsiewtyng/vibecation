@@ -21,42 +21,25 @@ serve(async (req) => {
       );
     }
 
-    const GOOGLE_MAPS_API_KEY = "AIzaSyBfwXJV_xW9l8fhSZ2rUOutB2xsfPqQTGI";
+    const GOOGLE_MAPS_API_KEY = Deno.env.get('MAPS') || "AIzaSyBfwXJV_xW9l8fhSZ2rUOutB2xsfPqQTGI";
     
-    // First, geocode the country to get its location
-    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(country)}&key=${GOOGLE_MAPS_API_KEY}`;
-    console.log('Geocoding URL:', geocodeUrl.replace(GOOGLE_MAPS_API_KEY, 'API_KEY_HIDDEN'));
+    console.log('Fetching attractions for country:', country);
     
-    const geocodeResponse = await fetch(geocodeUrl);
-    const geocodeData = await geocodeResponse.json();
+    // Step 1: Get top attractions from Wikipedia
+    const wikipediaUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=tourist+attractions+in+${encodeURIComponent(country)}&srlimit=30&origin=*`;
+    const wikiResponse = await fetch(wikipediaUrl);
+    const wikiData = await wikiResponse.json();
     
-    console.log('Geocode response status:', geocodeData.status);
-    console.log('Geocode response:', JSON.stringify(geocodeData, null, 2));
+    console.log('Wikipedia returned', wikiData.query?.search?.length || 0, 'results');
 
-    if (geocodeData.status === 'REQUEST_DENIED') {
+    // Extract attraction names from Wikipedia results
+    const attractionNames = wikiData.query?.search?.slice(0, 30).map((item: any) => 
+      item.title.replace(/\s*\(.*?\)\s*/g, '').trim()
+    ) || [];
+
+    if (attractionNames.length === 0) {
       return new Response(
-        JSON.stringify({ error: `Google Maps API error: ${geocodeData.error_message || 'Request denied. Please check API key permissions.'}` }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!geocodeData.results || geocodeData.results.length === 0) {
-      return new Response(
-        JSON.stringify({ error: `Could not geocode country: ${country}. Status: ${geocodeData.status}` }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const location = geocodeData.results[0].geometry.location;
-    
-    // Search for tourist attractions near this location
-    const placesUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${location.lat},${location.lng}&radius=50000&type=tourist_attraction&key=${GOOGLE_MAPS_API_KEY}`;
-    const placesResponse = await fetch(placesUrl);
-    const placesData = await placesResponse.json();
-
-    if (!placesData.results || placesData.results.length === 0) {
-      return new Response(
-        JSON.stringify({ message: "No attractions found", attractions: [] }),
+        JSON.stringify({ message: "No attractions found in Wikipedia", attractions: [] }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -66,23 +49,67 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Prepare attractions data
-    const attractions = placesData.results.slice(0, 20).map((place: any) => ({
-      place_id: place.place_id,
-      name: place.name,
-      description: place.vicinity || '',
-      lat: place.geometry.location.lat,
-      lng: place.geometry.location.lng,
-      rating: place.rating || null,
-      types: place.types || [],
-      photo_reference: place.photos?.[0]?.photo_reference || null,
-      country: country,
-    }));
+    // Step 2: Enrich each attraction with Google Places API data
+    const enrichedAttractions = [];
+    
+    for (const attractionName of attractionNames) {
+      try {
+        // Use Text Search to find the place
+        const searchQuery = `${attractionName} ${country}`;
+        const textSearchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&key=${GOOGLE_MAPS_API_KEY}`;
+        
+        const searchResponse = await fetch(textSearchUrl);
+        const searchData = await searchResponse.json();
+
+        if (searchData.status === 'REQUEST_DENIED') {
+          console.error('Google Places API error:', searchData.error_message);
+          continue;
+        }
+
+        if (searchData.results && searchData.results.length > 0) {
+          const place = searchData.results[0];
+          
+          // Calculate score: rating * log(user_ratings_total + 1)
+          const userRatingsTotal = place.user_ratings_total || 0;
+          const rating = place.rating || 0;
+          const score = rating * Math.log(userRatingsTotal + 1);
+
+          enrichedAttractions.push({
+            place_id: place.place_id,
+            name: place.name,
+            description: place.formatted_address || '',
+            lat: place.geometry.location.lat,
+            lng: place.geometry.location.lng,
+            rating: rating,
+            user_ratings_total: userRatingsTotal,
+            formatted_address: place.formatted_address || '',
+            types: place.types || [],
+            photo_reference: place.photos?.[0]?.photo_reference || null,
+            country: country,
+            score: score
+          });
+        }
+        
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (err) {
+        console.error(`Error enriching ${attractionName}:`, err);
+      }
+    }
+
+    // Step 3: Sort by score and take top 20
+    enrichedAttractions.sort((a, b) => b.score - a.score);
+    const topAttractions = enrichedAttractions.slice(0, 20);
+
+    console.log(`Enriched ${topAttractions.length} attractions, top score: ${topAttractions[0]?.score || 0}`);
+
+    // Remove score before storing in database
+    const attractionsToStore = topAttractions.map(({ score, ...attraction }) => attraction);
 
     // Upsert attractions into database (avoid duplicates)
     const { data, error } = await supabase
       .from('attractions')
-      .upsert(attractions, { onConflict: 'place_id', ignoreDuplicates: false });
+      .upsert(attractionsToStore, { onConflict: 'place_id', ignoreDuplicates: false });
 
     if (error) {
       console.error('Error inserting attractions:', error);
@@ -93,7 +120,10 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ message: `Fetched ${attractions.length} attractions`, attractions }),
+      JSON.stringify({ 
+        message: `Fetched and ranked ${topAttractions.length} attractions`, 
+        attractions: attractionsToStore 
+      }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

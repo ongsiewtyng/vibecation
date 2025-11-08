@@ -180,9 +180,9 @@ const Explore = () => {
                           {attraction.description}
                         </p>
                       )}
-                      {attraction.types && attraction.types.length > 0 && (
+                      {attraction.types && Array.isArray(attraction.types) && attraction.types.length > 0 && (
                         <div className="flex flex-wrap gap-1">
-                          {attraction.types.slice(0, 3).map((type, idx) => (
+                          {attraction.types.slice(0, 3).map((type: string, idx: number) => (
                             <span
                               key={idx}
                               className="text-xs px-2 py-1 bg-secondary rounded-full"
@@ -191,6 +191,11 @@ const Explore = () => {
                             </span>
                           ))}
                         </div>
+                      )}
+                      {attraction.user_ratings_total && (
+                        <p className="text-xs text-muted-foreground">
+                          {attraction.user_ratings_total.toLocaleString()} reviews
+                        </p>
                       )}
                       <Button 
                         variant="outline" 
