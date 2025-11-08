@@ -25,12 +25,24 @@ serve(async (req) => {
     
     // First, geocode the country to get its location
     const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(country)}&key=${GOOGLE_MAPS_API_KEY}`;
+    console.log('Geocoding URL:', geocodeUrl.replace(GOOGLE_MAPS_API_KEY, 'API_KEY_HIDDEN'));
+    
     const geocodeResponse = await fetch(geocodeUrl);
     const geocodeData = await geocodeResponse.json();
+    
+    console.log('Geocode response status:', geocodeData.status);
+    console.log('Geocode response:', JSON.stringify(geocodeData, null, 2));
+
+    if (geocodeData.status === 'REQUEST_DENIED') {
+      return new Response(
+        JSON.stringify({ error: `Google Maps API error: ${geocodeData.error_message || 'Request denied. Please check API key permissions.'}` }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (!geocodeData.results || geocodeData.results.length === 0) {
       return new Response(
-        JSON.stringify({ error: "Could not geocode country" }),
+        JSON.stringify({ error: `Could not geocode country: ${country}. Status: ${geocodeData.status}` }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
