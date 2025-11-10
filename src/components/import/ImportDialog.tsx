@@ -7,7 +7,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { importWorkbook, type ImportResult } from "@/lib/importers/travelImporter";
-import { Loader2, CheckCircle2, AlertCircle, Info } from "lucide-react";
+import { parsePlanningDocument } from "@/lib/importers/planningDocumentParser";
+import { generateImportTemplate } from "@/lib/importers/templateGenerator";
+import { Loader2, CheckCircle2, AlertCircle, Info, Download } from "lucide-react";
 
 interface ImportDialogProps {
   open: boolean;
@@ -19,7 +21,17 @@ const ImportDialog = ({ open, onClose, onSuccess }: ImportDialogProps) => {
   const [file, setFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
   const [dryRun, setDryRun] = useState(false);
+  const [useCustomParser, setUseCustomParser] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
+
+  const handleDownloadTemplate = () => {
+    try {
+      generateImportTemplate();
+      toast.success("Template downloaded! Check your downloads folder for Travel_Import_Template.xlsx");
+    } catch (error: any) {
+      toast.error("Failed to generate template: " + error.message);
+    }
+  };
 
   const handleImport = async () => {
     if (!file) {
@@ -31,20 +43,46 @@ const ImportDialog = ({ open, onClose, onSuccess }: ImportDialogProps) => {
     setResult(null);
 
     try {
-      const importResult = await importWorkbook(file, { dryRun });
-      setResult(importResult);
+      if (useCustomParser) {
+        // Use custom parser for planning documents
+        const customResult = await parsePlanningDocument(file);
+        
+        // Convert to standard ImportResult format
+        const convertedResult: ImportResult = {
+          summary: {
+            accommodations: { ...customResult.summary.accommodations, skipped: 0 },
+            transports: { ...customResult.summary.transport, skipped: 0 },
+          },
+          errors: customResult.errors.map(e => ({ sheet: "Document", row: 0, reason: e })),
+          warnings: customResult.warnings,
+        };
+        
+        setResult(convertedResult);
 
-      const totalCreated = Object.values(importResult.summary).reduce((sum, s) => sum + s.created, 0);
-      const totalUpdated = Object.values(importResult.summary).reduce((sum, s) => sum + s.updated, 0);
-      const errorCount = importResult.errors.length;
-
-      if (dryRun) {
-        toast.info(`Dry run complete: ${totalCreated} would be created, ${totalUpdated} updated`);
-      } else if (errorCount === 0) {
-        toast.success(`Import complete: ${totalCreated} created, ${totalUpdated} updated`);
-        onSuccess();
+        const totalCreated = customResult.summary.accommodations.created + customResult.summary.transport.created;
+        if (customResult.success && totalCreated > 0) {
+          toast.success(`Import complete: ${totalCreated} items imported`);
+          onSuccess();
+        } else if (customResult.errors.length > 0) {
+          toast.warning(`Import completed with ${customResult.errors.length} errors`);
+        }
       } else {
-        toast.warning(`Import completed with ${errorCount} errors`);
+        // Use standard importer
+        const importResult = await importWorkbook(file, { dryRun });
+        setResult(importResult);
+
+        const totalCreated = Object.values(importResult.summary).reduce((sum, s) => sum + s.created, 0);
+        const totalUpdated = Object.values(importResult.summary).reduce((sum, s) => sum + s.updated, 0);
+        const errorCount = importResult.errors.length;
+
+        if (dryRun) {
+          toast.info(`Dry run complete: ${totalCreated} would be created, ${totalUpdated} updated`);
+        } else if (errorCount === 0) {
+          toast.success(`Import complete: ${totalCreated} created, ${totalUpdated} updated`);
+          onSuccess();
+        } else {
+          toast.warning(`Import completed with ${errorCount} errors`);
+        }
       }
     } catch (error: any) {
       toast.error("Import failed: " + error.message);
@@ -70,6 +108,17 @@ const ImportDialog = ({ open, onClose, onSuccess }: ImportDialogProps) => {
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Download Template Button */}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={handleDownloadTemplate}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Download Excel Template
+          </Button>
+
           {/* File Input */}
           <div className="space-y-2">
             <Label htmlFor="file">Select File</Label>
@@ -81,18 +130,37 @@ const ImportDialog = ({ open, onClose, onSuccess }: ImportDialogProps) => {
             />
           </div>
 
-          {/* Dry Run Toggle */}
+          {/* Custom Parser Toggle */}
           <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
             <div className="space-y-0.5">
-              <Label htmlFor="dry-run" className="text-sm font-medium cursor-pointer">
-                Dry Run Mode
+              <Label htmlFor="custom-parser" className="text-sm font-medium cursor-pointer">
+                Planning Document Format
               </Label>
               <p className="text-xs text-muted-foreground">
-                Preview import without writing to database
+                For mixed-section layouts (like your uploaded file)
               </p>
             </div>
-            <Switch id="dry-run" checked={dryRun} onCheckedChange={setDryRun} />
+            <Switch 
+              id="custom-parser" 
+              checked={useCustomParser} 
+              onCheckedChange={setUseCustomParser} 
+            />
           </div>
+
+          {/* Dry Run Toggle - Only show for standard importer */}
+          {!useCustomParser && (
+            <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
+              <div className="space-y-0.5">
+                <Label htmlFor="dry-run" className="text-sm font-medium cursor-pointer">
+                  Dry Run Mode
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Preview import without writing to database
+                </p>
+              </div>
+              <Switch id="dry-run" checked={dryRun} onCheckedChange={setDryRun} />
+            </div>
+          )}
 
           {/* Info Alert */}
           <Alert>
