@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { PlaceCombobox } from "./PlaceCombobox";
 
 interface WishlistFormDialogProps {
   open: boolean;
@@ -22,6 +24,24 @@ const WishlistFormDialog = ({ open, onClose, item, onSuccess }: WishlistFormDial
     priority: 3,
     tags: "",
     notes: "",
+  });
+
+  // Fetch existing wishlist places for combobox options
+  const { data: existingPlaces = [] } = useQuery({
+    queryKey: ["wishlist-places"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("wishlist")
+        .select("place")
+        .not("place", "is", null)
+        .order("place");
+      
+      if (error) throw error;
+      
+      // Get unique place names
+      const uniquePlaces = Array.from(new Set(data.map(item => item.place)));
+      return uniquePlaces;
+    },
   });
 
   useEffect(() => {
@@ -94,13 +114,10 @@ const WishlistFormDialog = ({ open, onClose, item, onSuccess }: WishlistFormDial
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="place">Place *</Label>
-              <Input
-                id="place"
+              <PlaceCombobox
                 value={formData.place}
-                onChange={(e) =>
-                  setFormData({ ...formData, place: e.target.value })
-                }
-                required
+                onChange={(value) => setFormData({ ...formData, place: value })}
+                options={existingPlaces}
               />
             </div>
             <div className="space-y-2">

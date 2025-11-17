@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { country } = await req.json();
+    const { country, city, radius = 3000, type = 'tourist_attraction' } = await req.json();
     
     if (!country) {
       return new Response(
@@ -23,10 +23,44 @@ serve(async (req) => {
 
     const GOOGLE_MAPS_API_KEY = Deno.env.get('MAPS') || "AIzaSyBfwXJV_xW9l8fhSZ2rUOutB2xsfPqQTGI";
     
-    console.log('Fetching attractions for country:', country);
+    console.log('Fetching attractions for country:', country, 'city:', city || 'N/A');
     
-    // Step 1: Get top attractions from Wikipedia
-    const wikipediaUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=tourist+attractions+in+${encodeURIComponent(country)}&srlimit=30&origin=*`;
+    
+    // Step 1: Get center coordinates if city is provided
+    let centerLat: number | null = null;
+    let centerLng: number | null = null;
+    
+    if (city) {
+      // Use Places API v1 Text Search to geocode the city
+      const textQuery = `${city}, ${country}`;
+      const geocodeUrl = 'https://places.googleapis.com/v1/places:searchText';
+      
+      const geocodeResponse = await fetch(geocodeUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
+          'X-Goog-FieldMask': 'places.location'
+        },
+        body: JSON.stringify({
+          textQuery,
+          languageCode: 'en'
+        })
+      });
+      
+      if (geocodeResponse.ok) {
+        const geocodeData = await geocodeResponse.json();
+        if (geocodeData.places && geocodeData.places.length > 0) {
+          centerLat = geocodeData.places[0].location.latitude;
+          centerLng = geocodeData.places[0].location.longitude;
+          console.log('Geocoded city to:', centerLat, centerLng);
+        }
+      }
+    }
+    
+    // Step 2: Get top attractions from Wikipedia
+    const searchQuery = city ? `tourist+attractions+in+${encodeURIComponent(city)}` : `tourist+attractions+in+${encodeURIComponent(country)}`;
+    const wikipediaUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=${searchQuery}&srlimit=30&origin=*`;
     const wikiResponse = await fetch(wikipediaUrl);
     const wikiData = await wikiResponse.json();
     
@@ -49,13 +83,13 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Step 2: Enrich each attraction with Google Places API data
+    // Step 3: Enrich each attraction with Google Places API data
     const enrichedAttractions = [];
     
     for (const attractionName of attractionNames) {
       try {
         // Use Text Search to find the place
-        const searchQuery = `${attractionName} ${country}`;
+        const searchQuery = city ? `${attractionName} ${city}` : `${attractionName} ${country}`;
         const textSearchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&key=${GOOGLE_MAPS_API_KEY}`;
         
         const searchResponse = await fetch(textSearchUrl);
@@ -86,6 +120,7 @@ serve(async (req) => {
             types: place.types || [],
             photo_reference: place.photos?.[0]?.photo_reference || null,
             country: country,
+            city: city || null,
             score: score
           });
         }
