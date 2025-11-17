@@ -40,11 +40,12 @@ serve(async (req) => {
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
-          'X-Goog-FieldMask': 'places.location'
+          'X-Goog-FieldMask': 'places.location,places.displayName'
         },
         body: JSON.stringify({
           textQuery,
-          languageCode: 'en'
+          languageCode: 'en',
+          maxResultCount: 1
         })
       });
       
@@ -55,87 +56,85 @@ serve(async (req) => {
           centerLng = geocodeData.places[0].location.longitude;
           console.log('Geocoded city to:', centerLat, centerLng);
         }
+      } else {
+        const errorText = await geocodeResponse.text();
+        console.error('Failed to geocode city:', errorText);
       }
     }
     
-    // Step 2: Get top attractions from Wikipedia
-    const searchQuery = city ? `tourist+attractions+in+${encodeURIComponent(city)}` : `tourist+attractions+in+${encodeURIComponent(country)}`;
-    const wikipediaUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=${searchQuery}&srlimit=30&origin=*`;
-    const wikiResponse = await fetch(wikipediaUrl);
-    const wikiData = await wikiResponse.json();
-    
-    console.log('Wikipedia returned', wikiData.query?.search?.length || 0, 'results');
-
-    // Extract attraction names from Wikipedia results
-    const attractionNames = wikiData.query?.search?.slice(0, 30).map((item: any) => 
-      item.title.replace(/\s*\(.*?\)\s*/g, '').trim()
-    ) || [];
-
-    if (attractionNames.length === 0) {
+    if (!centerLat || !centerLng) {
       return new Response(
-        JSON.stringify({ message: "No attractions found in Wikipedia", attractions: [] }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: "Could not geocode city. Please provide lat/lng or a valid city name." }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+
+    // Step 3: Use Places API v1 Nearby Search
+    const nearbyUrl = 'https://places.googleapis.com/v1/places:searchNearby';
+    
+    const nearbyResponse = await fetch(nearbyUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.rating,places.userRatingCount,places.location,places.formattedAddress,places.types,places.photos'
+      },
+      body: JSON.stringify({
+        locationRestriction: {
+          circle: {
+            center: {
+              latitude: centerLat,
+              longitude: centerLng
+            },
+            radius: radius
+          }
+        },
+        includedTypes: [type],
+        maxResultCount: 20,
+        languageCode: 'en',
+        rankPreference: 'POPULARITY'
+      })
+    });
+
+    if (!nearbyResponse.ok) {
+      const errorText = await nearbyResponse.text();
+      console.error('Google Places Nearby API error:', nearbyResponse.status, errorText);
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch attractions', detail: errorText }),
+        { status: nearbyResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const nearbyData = await nearbyResponse.json();
+    console.log('Places Nearby API returned', nearbyData.places?.length || 0, 'results');
 
-    // Step 3: Enrich each attraction with Google Places API data
-    const enrichedAttractions = [];
+    // Normalize Places API v1 response
+    const enrichedAttractions = (nearbyData.places || []).map((place: any) => {
+      const userRatingsTotal = place.userRatingCount || 0;
+      const rating = place.rating || 0;
+      const score = rating * Math.log(userRatingsTotal + 1);
+
+      return {
+        place_id: place.id,
+        name: place.displayName?.text || '',
+        description: place.formattedAddress || '',
+        lat: place.location?.latitude || 0,
+        lng: place.location?.longitude || 0,
+        rating: rating,
+        user_ratings_total: userRatingsTotal,
+        formatted_address: place.formattedAddress || '',
+        types: place.types || [],
+        photo_reference: place.photos?.[0]?.name || null,
+        country: country,
+        city: city || null,
+        score: score
+      };
+    });
+
+    // Sort by score and deduplicate
+    enrichedAttractions.sort((a: any, b: any) => b.score - a.score);
     
-    for (const attractionName of attractionNames) {
-      try {
-        // Use Text Search to find the place
-        const searchQuery = city ? `${attractionName} ${city}` : `${attractionName} ${country}`;
-        const textSearchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&key=${GOOGLE_MAPS_API_KEY}`;
-        
-        const searchResponse = await fetch(textSearchUrl);
-        const searchData = await searchResponse.json();
-
-        if (searchData.status === 'REQUEST_DENIED') {
-          console.error('Google Places API error:', searchData.error_message);
-          continue;
-        }
-
-        if (searchData.results && searchData.results.length > 0) {
-          const place = searchData.results[0];
-          
-          // Calculate score: rating * log(user_ratings_total + 1)
-          const userRatingsTotal = place.user_ratings_total || 0;
-          const rating = place.rating || 0;
-          const score = rating * Math.log(userRatingsTotal + 1);
-
-          enrichedAttractions.push({
-            place_id: place.place_id,
-            name: place.name,
-            description: place.formatted_address || '',
-            lat: place.geometry.location.lat,
-            lng: place.geometry.location.lng,
-            rating: rating,
-            user_ratings_total: userRatingsTotal,
-            formatted_address: place.formatted_address || '',
-            types: place.types || [],
-            photo_reference: place.photos?.[0]?.photo_reference || null,
-            country: country,
-            city: city || null,
-            score: score
-          });
-        }
-        
-        // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
-      } catch (err) {
-        console.error(`Error enriching ${attractionName}:`, err);
-      }
-    }
-
-    // Step 3: Sort by score and take top 20
-    enrichedAttractions.sort((a, b) => b.score - a.score);
-    
-    // Deduplicate by place_id (keep highest scored ones)
     const uniqueAttractions = new Map();
     for (const attraction of enrichedAttractions) {
       if (!uniqueAttractions.has(attraction.place_id)) {
@@ -144,14 +143,18 @@ serve(async (req) => {
     }
     
     const topAttractions = Array.from(uniqueAttractions.values()).slice(0, 20);
-
-    console.log(`Enriched ${topAttractions.length} unique attractions, top score: ${topAttractions[0]?.score || 0}`);
+    console.log(`Returning ${topAttractions.length} unique attractions`);
 
     // Remove score before storing in database
     const attractionsToStore = topAttractions.map(({ score, ...attraction }) => attraction);
 
-    // Upsert attractions into database (avoid duplicates)
-    const { data, error } = await supabase
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Upsert attractions into database
+    const { error } = await supabase
       .from('attractions')
       .upsert(attractionsToStore, { onConflict: 'place_id', ignoreDuplicates: false });
 
@@ -165,7 +168,8 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ 
-        message: `Fetched and ranked ${topAttractions.length} attractions`, 
+        message: `Fetched ${topAttractions.length} attractions`, 
+        center: { lat: centerLat, lng: centerLng },
         attractions: attractionsToStore 
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

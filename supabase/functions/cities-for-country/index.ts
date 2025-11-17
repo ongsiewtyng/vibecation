@@ -44,7 +44,8 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         textQuery,
-        languageCode: 'en'
+        languageCode: 'en',
+        maxResultCount: limit
       })
     });
 
@@ -60,22 +61,20 @@ serve(async (req) => {
     const data = await response.json();
     console.log('Places API returned', data.places?.length || 0, 'results');
 
-    // Filter for localities and administrative areas
-    const cities = (data.places || [])
-      .filter((place: any) => {
-        const types = place.types || [];
-        return types.includes('locality') || types.includes('administrative_area_level_1');
-      })
+    // Map all places - be lenient with types to get actual results
+    const allPlaces = (data.places || [])
       .map((place: any) => ({
         name: place.displayName?.text || '',
         lat: place.location?.latitude || 0,
         lng: place.location?.longitude || 0,
-        formattedAddress: place.formattedAddress || ''
-      }));
+        formattedAddress: place.formattedAddress || '',
+        types: place.types || []
+      }))
+      .filter((place: any) => place.name); // Only filter out empty names
 
-    // Deduplicate by name
+    // Deduplicate by name (case-insensitive)
     const uniqueCities = Array.from(
-      new Map(cities.map((city: any) => [city.name, city])).values()
+      new Map(allPlaces.map((city: any) => [city.name.toLowerCase(), city])).values()
     ).slice(0, limit);
 
     console.log('Returning', uniqueCities.length, 'unique cities');
