@@ -2,3 +2,6 @@ project_id = "iyzktiekxmhatefihkki"
 
 [functions.fetch-attractions]
 verify_jwt = false
+
+[functions.cities-for-country]
+verify_jwt = false

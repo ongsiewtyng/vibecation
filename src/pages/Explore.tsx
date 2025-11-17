@@ -5,18 +5,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Search, MapPin, Star, Plus } from "lucide-react";
+import { Search, MapPin, Star, Plus, Dices } from "lucide-react";
 import { COUNTRIES } from "@/config/maps";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import GoogleMapComponent from "@/components/maps/GoogleMapComponent";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { CityCombobox } from "@/components/explore/CityCombobox";
+import { Badge } from "@/components/ui/badge";
 
 const Explore = () => {
   const [selectedCountry, setSelectedCountry] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAttraction, setSelectedAttraction] = useState<any>(null);
   const [showTripDialog, setShowTripDialog] = useState(false);
+  const [isRolling, setIsRolling] = useState(false);
+  const [randomPick, setRandomPick] = useState<{ country: string; city: string } | null>(null);
 
   const { data: trips = [] } = useQuery({
     queryKey: ["trips"],
@@ -30,16 +35,39 @@ const Explore = () => {
     },
   });
 
-  const { data: attractions = [], refetch } = useQuery({
-    queryKey: ["attractions", selectedCountry],
+  const { data: cities = [], isLoading: citiesLoading } = useQuery({
+    queryKey: ["cities", selectedCountry],
     queryFn: async () => {
       if (!selectedCountry) return [];
       
-      const { data, error } = await supabase
+      const { data, error } = await supabase.functions.invoke('cities-for-country', {
+        body: { countryName: selectedCountry, limit: 30 }
+      });
+
+      if (error) {
+        console.error('Error fetching cities:', error);
+        return [];
+      }
+      return (data?.cities ?? []).map((c: any) => c.name);
+    },
+    enabled: !!selectedCountry,
+  });
+
+  const { data: attractions = [], refetch } = useQuery({
+    queryKey: ["attractions", selectedCountry, selectedCity],
+    queryFn: async () => {
+      if (!selectedCountry) return [];
+      
+      let query = supabase
         .from("attractions")
         .select("*")
-        .eq("country", selectedCountry)
-        .order("rating", { ascending: false });
+        .eq("country", selectedCountry);
+      
+      if (selectedCity) {
+        query = query.eq("city", selectedCity);
+      }
+      
+      const { data, error } = await query.order("rating", { ascending: false });
 
       if (error) throw error;
       return data;
@@ -47,26 +75,76 @@ const Explore = () => {
     enabled: !!selectedCountry,
   });
 
-  const handleFetchAttractions = async () => {
-    if (!selectedCountry) {
+  const handleRollDestination = async () => {
+    setIsRolling(true);
+    setRandomPick(null);
+    
+    try {
+      // Pick random country
+      const randomCountry = COUNTRIES[Math.floor(Math.random() * COUNTRIES.length)].name;
+      setSelectedCountry(randomCountry);
+      
+      // Simulate loading for delight
+      await new Promise(resolve => setTimeout(resolve, 700));
+      
+      // Fetch cities for that country
+      const { data: citiesResp, error: citiesError } = await supabase.functions.invoke('cities-for-country', {
+        body: { countryName: randomCountry, limit: 20 }
+      });
+      
+      if (citiesError) throw citiesError;
+      
+      const cityList = citiesResp?.cities ?? [];
+      if (cityList.length === 0) {
+        toast.error(`No cities found for ${randomCountry}. Try again!`);
+        setIsRolling(false);
+        return;
+      }
+      
+      // Pick random city
+      const randomCity = cityList[Math.floor(Math.random() * cityList.length)].name;
+      setSelectedCity(randomCity);
+      setRandomPick({ country: randomCountry, city: randomCity });
+      
+      // Fetch attractions
+      await handleFetchAttractions(randomCountry, randomCity);
+      
+      toast.success(`Picked ${randomCountry} → ${randomCity}!`);
+    } catch (error) {
+      console.error('Error rolling destination:', error);
+      toast.error("Failed to pick random destination");
+    } finally {
+      setIsRolling(false);
+    }
+  };
+
+  const handleFetchAttractions = async (country?: string, city?: string) => {
+    const targetCountry = country || selectedCountry;
+    const targetCity = city || selectedCity;
+    
+    if (!targetCountry) {
       toast.error("Please select a country");
       return;
     }
 
-    toast.info("Fetching attractions for " + selectedCountry);
+    const locationText = targetCity ? `${targetCity}, ${targetCountry}` : targetCountry;
+    toast.info("Fetching attractions for " + locationText);
     
     try {
       const { data, error } = await supabase.functions.invoke('fetch-attractions', {
-        body: { country: selectedCountry }
+        body: { country: targetCountry, city: targetCity || undefined }
       });
 
-      if (error) throw error;
+      if (error) {
+        const errorDetail = (error as any).message || "Unknown error";
+        toast.error("Failed to fetch attractions: " + errorDetail);
+        throw error;
+      }
       
       toast.success(`Fetched ${data.attractions?.length || 0} attractions`);
       refetch();
     } catch (error) {
       console.error('Error fetching attractions:', error);
-      toast.error("Failed to fetch attractions");
     }
   };
 
@@ -102,13 +180,57 @@ const Explore = () => {
       </header>
 
       <div className="container mx-auto p-6 space-y-6">
+        {/* Random Pick Banner */}
+        {randomPick && (
+          <Card className="border-primary">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Dices className="h-5 w-5 text-primary" />
+                <span className="text-sm font-medium">
+                  Random Pick:
+                </span>
+                <Badge variant="secondary">
+                  {randomPick.country} → {randomPick.city}
+                </Badge>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleRollDestination}
+                disabled={isRolling}
+              >
+                Roll Again
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Search and Filter */}
         <Card>
           <CardContent className="p-6 space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Filter Destinations</h2>
+              <Button 
+                variant="outline" 
+                onClick={handleRollDestination}
+                disabled={isRolling}
+                className="gap-2"
+              >
+                <Dices className={isRolling ? "animate-spin" : ""} />
+                I'm Feeling Adventurous
+              </Button>
+            </div>
+            
+            <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Select Country</label>
-                <Select value={selectedCountry} onValueChange={setSelectedCountry}>
+                <Select 
+                  value={selectedCountry} 
+                  onValueChange={(value) => {
+                    setSelectedCountry(value);
+                    setSelectedCity("");
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Choose a country" />
                   </SelectTrigger>
@@ -121,6 +243,17 @@ const Explore = () => {
                   </SelectContent>
                 </Select>
               </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">City</label>
+                <CityCombobox
+                  value={selectedCity}
+                  onChange={setSelectedCity}
+                  options={cities}
+                  disabled={!selectedCountry || citiesLoading}
+                />
+              </div>
+              
               <div className="space-y-2">
                 <label className="text-sm font-medium">Search Attractions</label>
                 <div className="relative">
@@ -134,7 +267,7 @@ const Explore = () => {
                 </div>
               </div>
             </div>
-            <Button onClick={handleFetchAttractions} disabled={!selectedCountry}>
+            <Button onClick={() => handleFetchAttractions()} disabled={!selectedCountry}>
               <Search className="mr-2 h-4 w-4" />
               Fetch Attractions from Google Places
             </Button>

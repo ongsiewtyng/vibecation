@@ -101,6 +101,7 @@ export type Database = {
       }
       attractions: {
         Row: {
+          city: string | null
           country: string
           created_at: string | null
           description: string | null
@@ -116,6 +117,7 @@ export type Database = {
           user_ratings_total: number | null
         }
         Insert: {
+          city?: string | null
           country: string
           created_at?: string | null
           description?: string | null
@@ -131,6 +133,7 @@ export type Database = {
           user_ratings_total?: number | null
         }
         Update: {
+          city?: string | null
           country?: string
           created_at?: string | null
           description?: string | null
