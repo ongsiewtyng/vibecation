@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { PlaceCombobox } from "./PlaceCombobox";
+import { CountryCombobox } from "@/components/shared/CountryCombobox";
 
 interface WishlistFormDialogProps {
   open: boolean;
@@ -121,14 +122,10 @@ const WishlistFormDialog = ({ open, onClose, item, onSuccess }: WishlistFormDial
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="country">Country *</Label>
-              <Input
-                id="country"
+              <Label>Country *</Label>
+              <CountryCombobox
                 value={formData.country}
-                onChange={(e) =>
-                  setFormData({ ...formData, country: e.target.value })
-                }
-                required
+                onChange={(value) => setFormData({ ...formData, country: value })}
               />
             </div>
           </div>
