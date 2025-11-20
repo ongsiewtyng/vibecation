@@ -15,6 +15,7 @@ import PackingTab from "@/components/trip-details/PackingTab";
 import AttachmentsTab from "@/components/trip-details/AttachmentsTab";
 import TripTimeline from "@/components/trip-details/TripTimeline";
 import TripSharingDialog from "@/components/sharing/TripSharingDialog";
+import WeatherForecast from "@/components/trip-details/WeatherForecast";
 import { format, differenceInDays } from "date-fns";
 import GoogleMapComponent from "@/components/maps/GoogleMapComponent";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -150,6 +151,13 @@ const TripDetail = () => {
             />
           </CardContent>
         </Card>
+
+        <WeatherForecast 
+          destination={trip.destination}
+          country={trip.country}
+          startDate={trip.start_date}
+          endDate={trip.end_date}
+        />
 
         <Tabs defaultValue="itinerary" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 lg:w-auto">

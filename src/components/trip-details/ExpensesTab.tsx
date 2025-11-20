@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ExpenseFormDialog from "./ExpenseFormDialog";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 const ExpensesTab = ({ tripId, budget }: { tripId: string; budget: number | null }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -35,6 +36,27 @@ const ExpensesTab = ({ tripId, budget }: { tripId: string; budget: number | null
   });
 
   const total = items.reduce((sum, item) => sum + Number(item.amount), 0);
+  const remaining = (budget || 0) - total;
+  const percentSpent = budget ? (total / budget) * 100 : 0;
+
+  // Group expenses by category
+  const categoryTotals = items.reduce((acc, item) => {
+    const category = item.category || "Other";
+    acc[category] = (acc[category] || 0) + Number(item.amount);
+    return acc;
+  }, {} as Record<string, number>);
+
+  const categoryData = Object.entries(categoryTotals).map(([name, value]) => ({
+    name,
+    value: Number(value.toFixed(2)),
+  }));
+
+  const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--destructive))', 'hsl(var(--muted-foreground))'];
+
+  const budgetData = [
+    { name: "Spent", amount: total },
+    { name: "Remaining", amount: Math.max(0, remaining) },
+  ];
 
   return (
     <div className="space-y-4">
@@ -44,24 +66,97 @@ const ExpensesTab = ({ tripId, budget }: { tripId: string; budget: number | null
           <Plus className="mr-2 h-4 w-4" />Add Expense
         </Button>
       </div>
-      <Card>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-center">
               <p className="text-sm text-muted-foreground">Budget</p>
-              <p className="text-xl font-semibold">£{budget || 0}</p>
+              <p className="text-2xl font-bold">£{budget || 0}</p>
             </div>
-            <div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-center">
               <p className="text-sm text-muted-foreground">Spent</p>
-              <p className="text-xl font-semibold">£{total.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-primary">£{total.toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground mt-1">{percentSpent.toFixed(1)}% of budget</p>
             </div>
-            <div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-center">
               <p className="text-sm text-muted-foreground">Remaining</p>
-              <p className="text-xl font-semibold">£{((budget || 0) - total).toFixed(2)}</p>
+              <p className={`text-2xl font-bold ${remaining < 0 ? 'text-destructive' : 'text-accent'}`}>
+                £{remaining.toFixed(2)}
+              </p>
+              {remaining < 0 && (
+                <div className="flex items-center justify-center gap-1 text-xs text-destructive mt-1">
+                  <TrendingDown className="h-3 w-3" />
+                  Over budget
+                </div>
+              )}
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
+
+      {items.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Spending by Category</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={categoryData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="hsl(var(--primary))"
+                    dataKey="value"
+                  >
+                    {categoryData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => `£${value}`} />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Budget Overview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={budgetData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" />
+                  <YAxis stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip 
+                    formatter={(value) => `£${Number(value).toFixed(2)}`}
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '0.5rem'
+                    }}
+                  />
+                  <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+      )}
       {items.map((item) => (
         <Card key={item.id}>
           <CardContent className="p-4">
