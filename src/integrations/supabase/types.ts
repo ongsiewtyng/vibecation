@@ -305,6 +305,114 @@ export type Database = {
           },
         ]
       }
+      template_attractions: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          place_id: string | null
+          template_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          place_id?: string | null
+          template_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          place_id?: string | null
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_attractions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "trip_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      template_itinerary_items: {
+        Row: {
+          created_at: string
+          day_number: number
+          description: string | null
+          id: string
+          location: string | null
+          template_id: string
+          time: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          day_number: number
+          description?: string | null
+          id?: string
+          location?: string | null
+          template_id: string
+          time?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          day_number?: number
+          description?: string | null
+          id?: string
+          location?: string | null
+          template_id?: string
+          time?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_itinerary_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "trip_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      template_packing_items: {
+        Row: {
+          category: string | null
+          created_at: string
+          id: string
+          item: string
+          template_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          item: string
+          template_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          item?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_packing_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "trip_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transports: {
         Row: {
           arrival_time: string | null
@@ -389,6 +497,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      trip_templates: {
+        Row: {
+          country: string
+          created_at: string
+          description: string | null
+          destination: string
+          duration_days: number
+          id: string
+          is_featured: boolean | null
+          name: string
+          season: string | null
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          country: string
+          created_at?: string
+          description?: string | null
+          destination: string
+          duration_days: number
+          id?: string
+          is_featured?: boolean | null
+          name: string
+          season?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          country?: string
+          created_at?: string
+          description?: string | null
+          destination?: string
+          duration_days?: number
+          id?: string
+          is_featured?: boolean | null
+          name?: string
+          season?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       trips: {
         Row: {
