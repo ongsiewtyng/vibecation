@@ -1,4 +1,4 @@
-export const GOOGLE_MAPS_API_KEY = "AIzaSyBfwXJV_xW9l8fhSZ2rUOutB2xsfPqQTGI";
+export const GOOGLE_MAPS_API_KEY = "AIzaSyDfWZrAO651K_WK4HjUTJmgvARMgzMLuV8";
 
 export const COUNTRIES = [
   { code: "US", name: "United States" },
