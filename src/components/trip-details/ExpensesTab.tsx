@@ -9,7 +9,15 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
-const ExpensesTab = ({ tripId, budget }: { tripId: string; budget: number | null }) => {
+const ExpensesTab = ({
+                         tripId,
+                         budget,
+                         currencySymbol = "£",   // default fallback
+                     }: {
+    tripId: string;
+    budget: number | null;
+    currencySymbol?: string;
+}) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
   const { toast } = useToast();
@@ -72,7 +80,9 @@ const ExpensesTab = ({ tripId, budget }: { tripId: string; budget: number | null
           <CardContent className="p-4">
             <div className="text-center">
               <p className="text-sm text-muted-foreground">Budget</p>
-              <p className="text-2xl font-bold">£{budget || 0}</p>
+                <p className="text-2xl font-bold">
+                    {currencySymbol}{budget || 0}
+                </p>
             </div>
           </CardContent>
         </Card>
@@ -80,7 +90,9 @@ const ExpensesTab = ({ tripId, budget }: { tripId: string; budget: number | null
           <CardContent className="p-4">
             <div className="text-center">
               <p className="text-sm text-muted-foreground">Spent</p>
-              <p className="text-2xl font-bold text-primary">£{total.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-primary">
+                    {currencySymbol}{total.toFixed(2)}
+                </p>
               <p className="text-xs text-muted-foreground mt-1">{percentSpent.toFixed(1)}% of budget</p>
             </div>
           </CardContent>
@@ -89,9 +101,9 @@ const ExpensesTab = ({ tripId, budget }: { tripId: string; budget: number | null
           <CardContent className="p-4">
             <div className="text-center">
               <p className="text-sm text-muted-foreground">Remaining</p>
-              <p className={`text-2xl font-bold ${remaining < 0 ? 'text-destructive' : 'text-accent'}`}>
-                £{remaining.toFixed(2)}
-              </p>
+                <p className={`text-2xl font-bold ${remaining < 0 ? 'text-destructive' : 'text-accent'}`}>
+                    {currencySymbol}{remaining.toFixed(2)}
+                </p>
               {remaining < 0 && (
                 <div className="flex items-center justify-center gap-1 text-xs text-destructive mt-1">
                   <TrendingDown className="h-3 w-3" />
@@ -126,7 +138,7 @@ const ExpensesTab = ({ tripId, budget }: { tripId: string; budget: number | null
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => `£${value}`} />
+                    <Tooltip formatter={(value) => `${currencySymbol}${value}`} />
                 </PieChart>
               </ResponsiveContainer>
             </CardContent>
@@ -167,7 +179,9 @@ const ExpensesTab = ({ tripId, budget }: { tripId: string; budget: number | null
                 {item.notes && <p className="text-sm mt-1">{item.notes}</p>}
               </div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold">£{Number(item.amount).toFixed(2)}</span>
+                <span className="font-semibold">
+                  {currencySymbol}{Number(item.amount).toFixed(2)}
+                </span>
                 <Button size="sm" variant="ghost" onClick={() => { setEditItem(item); setDialogOpen(true); }}>
                   <Pencil className="h-4 w-4" />
                 </Button>
