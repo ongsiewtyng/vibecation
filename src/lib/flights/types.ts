@@ -15,6 +15,8 @@ export interface FlightTicket {
     travelClass: string;
     passenger: string;
     bookingRef: string;
+    gate?: string | null;
+    terminal?: string | null;
     createdAt: string;
 }
 

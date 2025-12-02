@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.cities-for-country]
 verify_jwt = false
+
+[functions.get-weather-forecast]
+verify_jwt = false
+
+[functions.parse-boarding-pass]
+verify_jwt = false
