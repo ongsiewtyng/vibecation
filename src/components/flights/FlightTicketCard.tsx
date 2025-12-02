@@ -93,13 +93,13 @@ export const FlightTicketCard: React.FC<FlightTicketCardProps> = ({ ticket, inde
 
     return (
         <article
-            className="relative mx-auto max-w-sm cursor-pointer"
+            className="relative mx-auto w-full max-w-[340px] sm:max-w-sm cursor-pointer"
             onClick={handleToggle}
             style={{ transitionDelay: `${index * 40}ms` }}
         >
             <div className="group relative [perspective:1400px]">
                 <div
-                    className={`relative h-[560px] transition-transform duration-700 [transform-style:preserve-3d] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                    className={`relative h-[480px] sm:h-[520px] transition-transform duration-700 [transform-style:preserve-3d] ease-[cubic-bezier(0.22,1,0.36,1)] ${
                         isFlipped ? "[transform:rotateY(180deg)]" : ""
                     }`}
                 >
@@ -203,124 +203,124 @@ export const FlightTicketCard: React.FC<FlightTicketCardProps> = ({ ticket, inde
 
                     {/* BACK */}
                     <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]">
-                        <div className="h-full rounded-[30px] bg-card text-foreground border border-border px-6 pt-6 pb-7 flex flex-col shadow-xl">
-                            <div className="mb-6 border-b border-dashed border-border pb-4">
+                        <div className="h-full rounded-[30px] bg-card text-foreground border border-border px-4 sm:px-6 pt-4 sm:pt-5 pb-4 flex flex-col shadow-xl overflow-hidden">
+                            <div className="mb-3 sm:mb-4 border-b border-dashed border-border pb-3">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <div className="text-xs uppercase tracking-wider text-muted-foreground">Boarding Pass</div>
-                                        <div className="mt-1 text-lg font-bold tracking-tight text-foreground">{ticket.airline}</div>
+                                        <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">Boarding Pass</div>
+                                        <div className="mt-0.5 text-base sm:text-lg font-bold tracking-tight text-foreground">{ticket.airline}</div>
                                     </div>
                                     {airlineLogo1x && (
                                         <img
                                             src={airlineLogo1x}
-                                            className="h-12 w-auto object-contain rounded-lg bg-muted/30 p-2"
+                                            className="h-10 sm:h-12 w-auto object-contain rounded-lg bg-muted/30 p-1.5 sm:p-2"
                                             alt={ticket.airline}
                                         />
                                     )}
                                 </div>
                             </div>
 
-                            <div className="mb-6 space-y-3">
-                                <div className="flex items-start gap-3">
-                                    <User className="h-4 w-4 mt-0.5 text-primary" />
-                                    <div className="flex-1">
-                                        <div className="text-xs uppercase tracking-wider text-muted-foreground">Passenger</div>
-                                        <div className="mt-0.5 text-sm font-semibold text-foreground">{ticket.passenger}</div>
+                            <div className="mb-3 sm:mb-4 space-y-2">
+                                <div className="flex items-start gap-2">
+                                    <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 mt-0.5 text-primary flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">Passenger</div>
+                                        <div className="mt-0.5 text-xs sm:text-sm font-semibold text-foreground truncate">{ticket.passenger}</div>
                                     </div>
                                 </div>
 
-                                <div className="flex items-start gap-3">
-                                    <Calendar className="h-4 w-4 mt-0.5 text-primary" />
-                                    <div className="flex-1">
-                                        <div className="text-xs uppercase tracking-wider text-muted-foreground">Date</div>
-                                        <div className="mt-0.5 text-sm font-semibold text-foreground">{dateDisplay}</div>
+                                <div className="flex items-start gap-2">
+                                    <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 mt-0.5 text-primary flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">Date</div>
+                                        <div className="mt-0.5 text-xs sm:text-sm font-semibold text-foreground">{dateDisplay}</div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="mb-6 grid grid-cols-2 gap-4 rounded-lg bg-muted/30 p-4">
+                            <div className="mb-3 sm:mb-4 grid grid-cols-2 gap-2 sm:gap-3 rounded-lg bg-muted/30 p-2.5 sm:p-3">
                                 <div>
-                                    <div className="text-xs uppercase tracking-wider text-muted-foreground">Flight</div>
-                                    <div className="mt-1 text-sm font-semibold text-foreground">{ticket.flightNumber}</div>
+                                    <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">Flight</div>
+                                    <div className="mt-0.5 text-xs sm:text-sm font-semibold text-foreground">{ticket.flightNumber}</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs uppercase tracking-wider text-muted-foreground">Class</div>
-                                    <div className="mt-1 text-sm font-semibold text-foreground">{ticket.travelClass}</div>
+                                    <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">Class</div>
+                                    <div className="mt-0.5 text-xs sm:text-sm font-semibold text-foreground truncate">{ticket.travelClass}</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs uppercase tracking-wider text-muted-foreground">Seat</div>
-                                    <div className="mt-1 text-sm font-semibold text-foreground">{ticket.seat}</div>
+                                    <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">Seat</div>
+                                    <div className="mt-0.5 text-xs sm:text-sm font-semibold text-foreground">{ticket.seat}</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs uppercase tracking-wider text-muted-foreground">Boarding</div>
-                                    <div className="mt-1 text-sm font-semibold text-foreground">{ticket.departureTime}</div>
+                                    <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">Boarding</div>
+                                    <div className="mt-0.5 text-xs sm:text-sm font-semibold text-foreground">{ticket.departureTime}</div>
                                 </div>
                                 {ticket.gate && (
                                     <div>
-                                        <div className="text-xs uppercase tracking-wider text-muted-foreground">Gate</div>
-                                        <div className="mt-1 text-sm font-semibold text-foreground">{ticket.gate}</div>
+                                        <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">Gate</div>
+                                        <div className="mt-0.5 text-xs sm:text-sm font-semibold text-foreground">{ticket.gate}</div>
                                     </div>
                                 )}
                                 {ticket.terminal && (
                                     <div>
-                                        <div className="text-xs uppercase tracking-wider text-muted-foreground">Terminal</div>
-                                        <div className="mt-1 text-sm font-semibold text-foreground">{ticket.terminal}</div>
+                                        <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">Terminal</div>
+                                        <div className="mt-0.5 text-xs sm:text-sm font-semibold text-foreground">{ticket.terminal}</div>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="mb-6 space-y-3">
-                                <div className="flex items-start gap-3">
-                                    <Plane className="h-4 w-4 mt-0.5 text-primary rotate-45" />
-                                    <div className="flex-1">
-                                        <div className="text-xs uppercase tracking-wider text-muted-foreground">From</div>
-                                        <div className="mt-0.5 text-sm font-semibold text-foreground">
+                            <div className="mb-3 sm:mb-4 space-y-2">
+                                <div className="flex items-start gap-2">
+                                    <Plane className="h-3.5 w-3.5 sm:h-4 sm:w-4 mt-0.5 text-primary rotate-45 flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">From</div>
+                                        <div className="mt-0.5 text-xs sm:text-sm font-semibold text-foreground truncate">
                                             {fromCode} - {fromAirportName || fromCity}
                                         </div>
                                         {fromAirport?.country && typeof fromAirport.country === 'string' && (
-                                            <div className="mt-0.5 text-xs text-muted-foreground flex items-center gap-1">
+                                            <div className="mt-0.5 text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
                                                 {fromFlag && <img src={fromFlag} className="w-3 h-2 rounded-sm" alt="" />}
-                                                {fromAirport.country}
+                                                <span className="truncate">{fromAirport.country}</span>
                                             </div>
                                         )}
                                     </div>
-                                    <div className="text-sm font-medium text-foreground">{ticket.departureTime}</div>
+                                    <div className="text-xs sm:text-sm font-medium text-foreground flex-shrink-0">{ticket.departureTime}</div>
                                 </div>
 
-                                <div className="flex items-start gap-3">
-                                    <Plane className="h-4 w-4 mt-0.5 text-primary -rotate-45" />
-                                    <div className="flex-1">
-                                        <div className="text-xs uppercase tracking-wider text-muted-foreground">To</div>
-                                        <div className="mt-0.5 text-sm font-semibold text-foreground">
+                                <div className="flex items-start gap-2">
+                                    <Plane className="h-3.5 w-3.5 sm:h-4 sm:w-4 mt-0.5 text-primary -rotate-45 flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">To</div>
+                                        <div className="mt-0.5 text-xs sm:text-sm font-semibold text-foreground truncate">
                                             {toCode} - {toAirportName || toCity}
                                         </div>
                                         {toAirport?.country && typeof toAirport.country === 'string' && (
-                                            <div className="mt-0.5 text-xs text-muted-foreground flex items-center gap-1">
+                                            <div className="mt-0.5 text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
                                                 {toFlag && <img src={toFlag} className="w-3 h-2 rounded-sm" alt="" />}
-                                                {toAirport.country}
+                                                <span className="truncate">{toAirport.country}</span>
                                             </div>
                                         )}
                                     </div>
-                                    <div className="text-sm font-medium text-foreground">{ticket.arrivalTime}</div>
+                                    <div className="text-xs sm:text-sm font-medium text-foreground flex-shrink-0">{ticket.arrivalTime}</div>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-3 border-t border-dashed border-border pt-4">
-                                <CreditCard className="h-4 w-4 text-primary" />
-                                <div className="flex-1">
-                                    <div className="text-xs uppercase tracking-wider text-muted-foreground">Booking Reference</div>
-                                    <div className="mt-0.5 text-lg font-bold tracking-[0.2em] text-foreground">{ticket.bookingRef}</div>
+                            <div className="flex items-center gap-2 border-t border-dashed border-border pt-3">
+                                <CreditCard className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">Booking Reference</div>
+                                    <div className="mt-0.5 text-sm sm:text-base font-bold tracking-[0.15em] text-foreground">{ticket.bookingRef}</div>
                                 </div>
                             </div>
 
-                            <div className="mt-6 rounded-lg bg-muted/20 p-4 text-center">
-                                <div className="mb-2 font-mono text-xs tracking-widest text-muted-foreground">
+                            <div className="mt-3 sm:mt-4 rounded-lg bg-muted/20 p-2.5 sm:p-3 text-center">
+                                <div className="mb-1.5 font-mono text-[10px] sm:text-xs tracking-widest text-muted-foreground">
                                     {ticket.flightNumber} • {ticket.bookingRef}
                                 </div>
-                                <div className="h-16 rounded bg-gradient-to-r from-transparent via-foreground/10 to-transparent" />
+                                <div className="h-12 sm:h-14 rounded bg-gradient-to-r from-transparent via-foreground/10 to-transparent" />
                             </div>
 
-                            <div className="mt-4 text-center text-xs text-muted-foreground/50">Click to flip back</div>
+                            <div className="mt-2 sm:mt-3 text-center text-[10px] sm:text-xs text-muted-foreground/50">Click to flip back</div>
                         </div>
                     </div>
                 </div>
