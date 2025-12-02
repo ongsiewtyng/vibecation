@@ -113,7 +113,7 @@ export const FlightTicketCard: React.FC<FlightTicketCardProps> = ({ ticket, inde
                                         <p className="text-sm font-semibold text-foreground">{fromCode}</p>
                                         <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                                             {fromFlag && <img src={fromFlag} className="w-3 h-2 rounded-sm" alt="" />}
-                                            <span className="line-clamp-1">{fromCity}</span>
+                                            <span className="line-clamp-1">{String(fromCity)}</span>
                                         </div>
                                         {fromAirportName && (
                                             <p className="text-[9px] text-muted-foreground/70 line-clamp-1">{fromAirportName}</p>
@@ -125,7 +125,7 @@ export const FlightTicketCard: React.FC<FlightTicketCardProps> = ({ ticket, inde
                                         <p className="text-sm font-semibold text-foreground">{toCode}</p>
                                         <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                                             {toFlag && <img src={toFlag} className="w-3 h-2 rounded-sm" alt="" />}
-                                            <span className="line-clamp-1">{toCity}</span>
+                                            <span className="line-clamp-1">{String(toCity)}</span>
                                         </div>
                                         {toAirportName && (
                                             <p className="text-[9px] text-muted-foreground/70 line-clamp-1">{toAirportName}</p>
@@ -277,7 +277,7 @@ export const FlightTicketCard: React.FC<FlightTicketCardProps> = ({ ticket, inde
                                         <div className="mt-0.5 text-sm font-semibold text-foreground">
                                             {fromCode} - {fromAirportName || fromCity}
                                         </div>
-                                        {fromAirport?.country && (
+                                        {fromAirport?.country && typeof fromAirport.country === 'string' && (
                                             <div className="mt-0.5 text-xs text-muted-foreground flex items-center gap-1">
                                                 {fromFlag && <img src={fromFlag} className="w-3 h-2 rounded-sm" alt="" />}
                                                 {fromAirport.country}
@@ -294,7 +294,7 @@ export const FlightTicketCard: React.FC<FlightTicketCardProps> = ({ ticket, inde
                                         <div className="mt-0.5 text-sm font-semibold text-foreground">
                                             {toCode} - {toAirportName || toCity}
                                         </div>
-                                        {toAirport?.country && (
+                                        {toAirport?.country && typeof toAirport.country === 'string' && (
                                             <div className="mt-0.5 text-xs text-muted-foreground flex items-center gap-1">
                                                 {toFlag && <img src={toFlag} className="w-3 h-2 rounded-sm" alt="" />}
                                                 {toAirport.country}
