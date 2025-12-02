@@ -18,7 +18,7 @@ import TripSharingDialog from "@/components/sharing/TripSharingDialog";
 import WeatherForecast from "@/components/trip-details/WeatherForecast";
 import {format, differenceInDays} from "date-fns";
 import GoogleMapComponent from "@/components/maps/GoogleMapComponent";
-import { getCurrencySymbol } from "@/config/currency";
+import {getCurrencyCode, getCurrencySymbol, getSymbolByCurrencyCodeSync} from "@/config/currency";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 
 const TripDetail = () => {
@@ -143,7 +143,8 @@ const TripDetail = () => {
         new Date(trip.start_date)
     );
 
-    const currencySymbol = getCurrencySymbol(trip.country);
+    const tripCurrencyCode = getCurrencyCode(trip.country);
+    const currencySymbol = getSymbolByCurrencyCodeSync(tripCurrencyCode);
 
     return (
         <div className="min-h-screen bg-background">
@@ -232,8 +233,9 @@ const TripDetail = () => {
 
                     <TabsContent value="expenses">
                         <ExpensesTab
-                            tripId={id!}
+                            tripId={trip.id}
                             budget={trip.budget}
+                            tripCurrencyCode={tripCurrencyCode}
                             currencySymbol={currencySymbol}
                         />
                     </TabsContent>

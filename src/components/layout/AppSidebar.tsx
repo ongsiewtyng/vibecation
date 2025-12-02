@@ -1,4 +1,4 @@
-import { Home, Map, Heart, Moon, Sun, Calendar, Compass } from "lucide-react";
+import {Home, Map, Heart, Moon, Sun, Calendar, Compass, Plane} from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useTheme } from "@/components/ThemeProvider";
@@ -23,6 +23,7 @@ const menuItems = [
     { title: "Calendar", url: "/calendar", icon: Calendar },
     { title: "Explore", url: "/explore", icon: Compass },
     { title: "Wishlist", url: "/wishlist", icon: Heart },
+    { title: "Flight Tickets", url: "/flight-tickets", icon: Plane },
 ];
 
 // Whatever you want to support as home currencies

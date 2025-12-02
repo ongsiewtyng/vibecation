@@ -11,8 +11,10 @@ import TripDetail from "./pages/TripDetail";
 import Wishlist from "./pages/Wishlist";
 import Calendar from "./pages/Calendar";
 import Explore from "./pages/Explore";
+import FlightTickets from "./pages/FlightTickets";
 import SharedTripView from "./pages/SharedTripView";
 import NotFound from "./pages/NotFound";
+
 
 const queryClient = new QueryClient();
 
@@ -21,10 +23,8 @@ const App = () => (
         <ThemeProvider defaultTheme="light" storageKey="travel-planner-theme">
             <TooltipProvider>
                 <AppInitializer />   {/* <-- load home currency before UI renders */}
-
                 <Toaster />
                 <Sonner />
-
                 <BrowserRouter>
                     <Routes>
                         <Route path="/" element={<MainLayout />}>
@@ -33,12 +33,12 @@ const App = () => (
                             <Route path="/wishlist" element={<Wishlist />} />
                             <Route path="/calendar" element={<Calendar />} />
                             <Route path="/explore" element={<Explore />} />
+                            <Route path="/flight-tickets" element={<FlightTickets />} />
                         </Route>
                         <Route path="/shared/:token" element={<SharedTripView />} />
                         <Route path="*" element={<NotFound />} />
                     </Routes>
                 </BrowserRouter>
-
             </TooltipProvider>
         </ThemeProvider>
     </QueryClientProvider>
