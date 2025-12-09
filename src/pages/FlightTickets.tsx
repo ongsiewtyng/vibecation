@@ -1,123 +1,201 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
+import { format, parseISO } from "date-fns";
 import { FlightTicketCard } from "@/components/flights/FlightTicketCard";
 import { AddFlightTicketModal } from "@/components/flights/AddFlightTicketModal";
+import { EditFlightTicketModal } from "@/components/flights/EditFlightTicketModal";
+import { DeleteFlightConfirmDialog } from "@/components/flights/DeleteFlightConfirmDialog";
+import { FlightTicketGroup } from "@/components/flights/FlightTicketGroup";
+import { FlightCalendarView } from "@/components/flights/FlightCalendarView";
 import { useFlightTickets } from "@/hooks/useFlightTickets";
+import { deleteFlightTicket } from "@/lib/flights/api";
 import type { FlightTicket } from "@/lib/flights/types";
-// import { useSession } from "@/wherever/auth";
+import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar, List, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const sampleTicket: FlightTicket = {
     id: "sample",
     userId: null as any,
-
-    // REAL airline name
     airline: "Emirates",
-
-    // REAL IATA airport codes
-    fromCode: "CHQ",                           // Crete (Chania) = CHQ
+    fromCode: "CHQ",
     fromCity: "Chania International Airport",
-
-    toCode: "MXP",                             // Milan Malpensa = MXP
+    toCode: "MXP",
     toCity: "Milan Malpensa Airport",
-
     departureTime: "18:30",
     arrivalTime: "19:30",
-
-    // DATE FIELDS
     flightDate: "2023-09-07",
     date: "07 SEP 2023",
-
     seat: "3A",
-
-    // MUST BE NO SPACE OR DASH (for airline logos)
-    flightNumber: "EK108",                     // Emirates = EK
-
+    flightNumber: "EK108",
     travelClass: "LUXURY",
     passenger: "ADAM SMITH",
     bookingRef: "ZLE23Q",
-
     createdAt: new Date().toISOString(),
 } as any;
- // `as any` in case your FlightTicket type differs slightly
 
 const FlightTickets: React.FC = () => {
-    // const { session } = useSession();
-    // const userId = session?.user?.id ?? null;
     const userId = null;
-
-    const { tickets, setTickets, loading, error } = useFlightTickets(userId);
+    const { tickets, setTickets, loading, error, refresh } = useFlightTickets(userId);
     const [isAdding, setIsAdding] = useState(false);
+    const [editingTicket, setEditingTicket] = useState<FlightTicket | null>(null);
+    const [deletingTicket, setDeletingTicket] = useState<FlightTicket | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [view, setView] = useState<"list" | "calendar">("list");
+    const { toast } = useToast();
 
     const showSample = !loading && !error && tickets.length === 0;
 
+    const groupedTickets = useMemo(() => {
+        const groups = new Map<string, FlightTicket[]>();
+        
+        const sortedTickets = [...tickets].sort((a, b) => 
+            parseISO(b.flightDate).getTime() - parseISO(a.flightDate).getTime()
+        );
+
+        sortedTickets.forEach((ticket) => {
+            const monthKey = format(parseISO(ticket.flightDate), "yyyy-MM");
+            if (!groups.has(monthKey)) {
+                groups.set(monthKey, []);
+            }
+            groups.get(monthKey)!.push(ticket);
+        });
+
+        return Array.from(groups.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+    }, [tickets]);
+
+    const handleEdit = (ticket: FlightTicket) => {
+        setEditingTicket(ticket);
+    };
+
+    const handleDelete = (ticket: FlightTicket) => {
+        setDeletingTicket(ticket);
+    };
+
+    const confirmDelete = async () => {
+        if (!deletingTicket) return;
+        
+        setIsDeleting(true);
+        try {
+            await deleteFlightTicket(deletingTicket.id);
+            setTickets((prev) => prev.filter((t) => t.id !== deletingTicket.id));
+            toast({
+                title: "Ticket deleted",
+                description: "Flight ticket removed successfully.",
+            });
+        } catch (err: any) {
+            toast({
+                title: "Error",
+                description: err.message ?? "Failed to delete ticket.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsDeleting(false);
+            setDeletingTicket(null);
+        }
+    };
+
+    const handleTicketUpdated = (updated: FlightTicket) => {
+        setTickets((prev) =>
+            prev.map((t) => (t.id === updated.id ? updated : t))
+        );
+    };
+
+    const handleCalendarTicketClick = (ticket: FlightTicket) => {
+        setEditingTicket(ticket);
+    };
+
     return (
-        <main className="min-h-screen bg-slate-100 px-4 py-10 transition-colors duration-300 dark:bg-slate-950">
+        <main className="min-h-screen bg-background px-4 py-10 transition-colors duration-300">
             <div className="mx-auto max-w-5xl space-y-6">
-                {/* Header */}
                 <section className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                     <div>
-                        <div className="inline-flex items-center gap-2 rounded-full bg-slate-200 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-sky-700 dark:bg-slate-900/70 dark:text-sky-300">
+                        <div className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-primary">
                             ✈ Flight History
                         </div>
-                        <h1 className="mt-3 text-3xl font-semibold uppercase tracking-[0.18em] text-slate-900 dark:text-slate-50">
+                        <h1 className="mt-3 text-3xl font-semibold uppercase tracking-[0.18em] text-foreground">
                             Flight Tickets
                         </h1>
-                        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300/80">
-                            A beautiful archive of every trip you’ve taken
+                        <p className="mt-2 text-sm text-muted-foreground">
+                            A beautiful archive of every trip you've taken
                         </p>
                     </div>
 
-                    <button
-                        type="button"
+                    <Button
                         onClick={() => setIsAdding(true)}
-                        className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-sky-400 to-indigo-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-sky-500/40 transition hover:shadow-xl hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 dark:focus-visible:ring-sky-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-100 dark:focus-visible:ring-offset-slate-950"
+                        className="gap-2"
                     >
-                        <span className="mr-1 text-lg">＋</span>
-                        <span>Add ticket</span>
-                    </button>
+                        <Plus className="h-4 w-4" />
+                        Add ticket
+                    </Button>
                 </section>
 
-                {/* Content */}
-                <section className="space-y-4">
-                    {/* Error */}
-                    {error && (
-                        <div className="rounded-xl border border-red-400/40 bg-red-100 px-4 py-3 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-950/60 dark:text-red-100">
-                            Failed to load tickets:{" "}
-                            <span className="font-medium">{error.message}</span>
-                        </div>
-                    )}
+                <Tabs value={view} onValueChange={(v) => setView(v as "list" | "calendar")} className="w-full">
+                    <TabsList className="grid w-full max-w-xs grid-cols-2">
+                        <TabsTrigger value="list" className="gap-2">
+                            <List className="h-4 w-4" />
+                            List
+                        </TabsTrigger>
+                        <TabsTrigger value="calendar" className="gap-2">
+                            <Calendar className="h-4 w-4" />
+                            Calendar
+                        </TabsTrigger>
+                    </TabsList>
 
-                    {/* Loading skeleton */}
-                    {loading && !error && (
-                        <div className="space-y-4">
-                            {[0, 1].map((i) => (
-                                <div
-                                    key={i}
-                                    className="h-[160px] animate-pulse rounded-2xl bg-slate-300 transition-colors dark:bg-slate-900/70"
-                                />
-                            ))}
-                        </div>
-                    )}
+                    <TabsContent value="list" className="mt-6">
+                        <section className="space-y-4">
+                            {error && (
+                                <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                                    Failed to load tickets:{" "}
+                                    <span className="font-medium">{error.message}</span>
+                                </div>
+                            )}
 
-                    {/* Real tickets */}
-                    {!loading && !error && tickets.length > 0 && (
-                        <div className="space-y-5">
-                            {tickets.map((ticket, index) => (
-                                <FlightTicketCard key={ticket.id} ticket={ticket} index={index} />
-                            ))}
-                        </div>
-                    )}
+                            {loading && !error && (
+                                <div className="space-y-4">
+                                    {[0, 1].map((i) => (
+                                        <div
+                                            key={i}
+                                            className="h-[160px] animate-pulse rounded-2xl bg-muted"
+                                        />
+                                    ))}
+                                </div>
+                            )}
 
-                    {/* Sample ticket when none saved yet */}
-                    {showSample && (
-                        <div className="space-y-3">
-                            <FlightTicketCard ticket={sampleTicket} index={0} />
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                                This is a sample ticket to preview the design. Add your own
-                                tickets to replace this view.
-                            </p>
-                        </div>
-                    )}
-                </section>
+                            {!loading && !error && tickets.length > 0 && (
+                                <div className="space-y-6">
+                                    {groupedTickets.map(([monthKey, monthTickets], groupIndex) => (
+                                        <FlightTicketGroup
+                                            key={monthKey}
+                                            monthKey={monthKey}
+                                            tickets={monthTickets}
+                                            onEdit={handleEdit}
+                                            onDelete={handleDelete}
+                                            defaultExpanded={groupIndex < 2}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+
+                            {showSample && (
+                                <div className="space-y-3">
+                                    <FlightTicketCard ticket={sampleTicket} index={0} />
+                                    <p className="text-xs text-muted-foreground">
+                                        This is a sample ticket to preview the design. Add your own
+                                        tickets to replace this view.
+                                    </p>
+                                </div>
+                            )}
+                        </section>
+                    </TabsContent>
+
+                    <TabsContent value="calendar" className="mt-6">
+                        <FlightCalendarView
+                            tickets={tickets}
+                            onTicketClick={handleCalendarTicketClick}
+                        />
+                    </TabsContent>
+                </Tabs>
             </div>
 
             <AddFlightTicketModal
@@ -125,6 +203,21 @@ const FlightTickets: React.FC = () => {
                 onClose={() => setIsAdding(false)}
                 onCreated={(ticket) => setTickets((prev) => [ticket, ...prev])}
                 userId={userId}
+            />
+
+            <EditFlightTicketModal
+                open={!!editingTicket}
+                onClose={() => setEditingTicket(null)}
+                onUpdated={handleTicketUpdated}
+                ticket={editingTicket}
+            />
+
+            <DeleteFlightConfirmDialog
+                open={!!deletingTicket}
+                onOpenChange={(open) => !open && setDeletingTicket(null)}
+                ticket={deletingTicket}
+                onConfirm={confirmDelete}
+                isDeleting={isDeleting}
             />
         </main>
     );
