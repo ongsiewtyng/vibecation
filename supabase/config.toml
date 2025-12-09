@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.parse-boarding-pass]
 verify_jwt = false
+
+[functions.flight-status]
+verify_jwt = false

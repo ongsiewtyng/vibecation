@@ -27,7 +27,7 @@ export async function fetchFlightTickets(userId?: string | null) {
     let query = supabase
         .from("flight_tickets")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("flight_date", { ascending: false });
 
     if (userId) {
         query = query.eq("user_id", userId);
@@ -70,4 +70,76 @@ export async function insertFlightTicket(input: NewFlightTicketInput) {
 
     if (error) throw error;
     return mapRowToTicket(data);
+}
+
+export async function updateFlightTicket(id: string, input: Partial<NewFlightTicketInput>) {
+    const updateData: Record<string, any> = {};
+    
+    if (input.airline !== undefined) updateData.airline = input.airline;
+    if (input.fromCode !== undefined) updateData.from_code = input.fromCode;
+    if (input.fromCity !== undefined) updateData.from_city = input.fromCity;
+    if (input.toCode !== undefined) updateData.to_code = input.toCode;
+    if (input.toCity !== undefined) updateData.to_city = input.toCity;
+    if (input.departureTime !== undefined) updateData.departure_time = input.departureTime;
+    if (input.arrivalTime !== undefined) updateData.arrival_time = input.arrivalTime;
+    if (input.flightDate !== undefined) updateData.flight_date = input.flightDate;
+    if (input.seat !== undefined) updateData.seat = input.seat;
+    if (input.flightNumber !== undefined) updateData.flight_number = input.flightNumber;
+    if (input.travelClass !== undefined) updateData.travel_class = input.travelClass;
+    if (input.passenger !== undefined) updateData.passenger = input.passenger;
+    if (input.bookingRef !== undefined) updateData.booking_ref = input.bookingRef;
+
+    const { data, error } = await supabase
+        .from("flight_tickets")
+        .update(updateData)
+        .eq("id", id)
+        .select("*")
+        .single();
+
+    if (error) throw error;
+    return mapRowToTicket(data);
+}
+
+export async function deleteFlightTicket(id: string) {
+    const { error } = await supabase
+        .from("flight_tickets")
+        .delete()
+        .eq("id", id);
+
+    if (error) throw error;
+}
+
+export interface FlightStatus {
+    flightNumber: string;
+    status: "scheduled" | "active" | "landed" | "cancelled" | "delayed" | "diverted" | "unknown";
+    departureAirport: string;
+    arrivalAirport: string;
+    scheduledDeparture: string | null;
+    actualDeparture: string | null;
+    scheduledArrival: string | null;
+    actualArrival: string | null;
+    departureGate: string | null;
+    arrivalGate: string | null;
+    departureTerminal: string | null;
+    arrivalTerminal: string | null;
+    delay: number | null;
+    airline: string | null;
+}
+
+export async function fetchFlightStatus(flightNumber: string, date?: string): Promise<FlightStatus | null> {
+    try {
+        const { data, error } = await supabase.functions.invoke("flight-status", {
+            body: { flightNumber, date },
+        });
+
+        if (error) {
+            console.error("Flight status error:", error);
+            return null;
+        }
+
+        return data as FlightStatus;
+    } catch (err) {
+        console.error("Failed to fetch flight status:", err);
+        return null;
+    }
 }
