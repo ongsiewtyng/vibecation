@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { differenceInDays } from "date-fns";
 import ItineraryFormDialog from "./ItineraryFormDialog";
+import ItineraryTimeline from "./ItineraryTimeline";
 import { useToast } from "@/hooks/use-toast";
 
 const ItineraryTab = ({ tripId, trip }: { tripId: string; trip: any }) => {
@@ -21,7 +22,21 @@ const ItineraryTab = ({ tripId, trip }: { tripId: string; trip: any }) => {
         .from("itinerary_items")
         .select("*")
         .eq("trip_id", tripId)
-        .order("day_number", { ascending: true });
+        .order("day_number", { ascending: true })
+        .order("time", { ascending: true, nullsFirst: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: accommodations = [] } = useQuery({
+    queryKey: ["accommodations", tripId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("accommodations")
+        .select("*")
+        .eq("trip_id", tripId)
+        .order("check_in", { ascending: true });
       if (error) throw error;
       return data;
     },
@@ -38,6 +53,15 @@ const ItineraryTab = ({ tripId, trip }: { tripId: string; trip: any }) => {
     },
   });
 
+  const handleEditItem = (item: any) => {
+    setEditItem(item);
+    setDialogOpen(true);
+  };
+
+  const handleDeleteItem = (id: string) => {
+    deleteMutation.mutate(id);
+  };
+
   const days = differenceInDays(new Date(trip.end_date), new Date(trip.start_date)) + 1;
 
   return (
@@ -48,35 +72,33 @@ const ItineraryTab = ({ tripId, trip }: { tripId: string; trip: any }) => {
           <Plus className="mr-2 h-4 w-4" />Add Activity
         </Button>
       </div>
-      {items.length === 0 ? (
-        <Card><CardContent className="py-8 text-center text-muted-foreground">No itinerary items yet</CardContent></Card>
+
+      {items.length === 0 && accommodations.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground mb-4">No itinerary items yet</p>
+            <Button variant="outline" onClick={() => { setEditItem(null); setDialogOpen(true); }}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add your first activity
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="space-y-3">
-          {items.map((item) => (
-            <Card key={item.id}>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <p className="font-medium">Day {item.day_number}: {item.title}</p>
-                    <p className="text-sm text-muted-foreground">{item.location}</p>
-                    {item.description && <p className="text-sm mt-1">{item.description}</p>}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">{item.time}</span>
-                    <Button size="sm" variant="ghost" onClick={() => { setEditItem(item); setDialogOpen(true); }}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => deleteMutation.mutate(item.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <ItineraryTimeline
+          items={items}
+          accommodations={accommodations}
+          tripStartDate={trip.start_date}
+          onEditItem={handleEditItem}
+          onDeleteItem={handleDeleteItem}
+        />
       )}
-      <ItineraryFormDialog open={dialogOpen} onOpenChange={setDialogOpen} tripId={tripId} item={editItem} />
+
+      <ItineraryFormDialog 
+        open={dialogOpen} 
+        onOpenChange={setDialogOpen} 
+        tripId={tripId} 
+        item={editItem} 
+      />
     </div>
   );
 };
