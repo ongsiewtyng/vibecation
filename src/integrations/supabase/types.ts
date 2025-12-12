@@ -23,6 +23,7 @@ export type Database = {
           cost: number | null
           created_at: string
           id: string
+          is_ai_suggested: boolean | null
           name: string
           notes: string | null
           trip_id: string
@@ -35,6 +36,7 @@ export type Database = {
           cost?: number | null
           created_at?: string
           id?: string
+          is_ai_suggested?: boolean | null
           name: string
           notes?: string | null
           trip_id: string
@@ -47,6 +49,7 @@ export type Database = {
           cost?: number | null
           created_at?: string
           id?: string
+          is_ai_suggested?: boolean | null
           name?: string
           notes?: string | null
           trip_id?: string
@@ -309,8 +312,10 @@ export type Database = {
           day_number: number
           description: string | null
           id: string
+          is_ai_suggested: boolean | null
           location: string | null
           time: string | null
+          time_of_day: string | null
           title: string
           trip_id: string
         }
@@ -320,8 +325,10 @@ export type Database = {
           day_number: number
           description?: string | null
           id?: string
+          is_ai_suggested?: boolean | null
           location?: string | null
           time?: string | null
+          time_of_day?: string | null
           title: string
           trip_id: string
         }
@@ -331,8 +338,10 @@ export type Database = {
           day_number?: number
           description?: string | null
           id?: string
+          is_ai_suggested?: boolean | null
           location?: string | null
           time?: string | null
+          time_of_day?: string | null
           title?: string
           trip_id?: string
         }
@@ -567,6 +576,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "transports_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_budget_categories: {
+        Row: {
+          allocated_amount: number
+          category: string
+          created_at: string
+          currency: string
+          id: string
+          is_ai_suggested: boolean | null
+          trip_id: string
+          updated_at: string
+        }
+        Insert: {
+          allocated_amount?: number
+          category: string
+          created_at?: string
+          currency?: string
+          id?: string
+          is_ai_suggested?: boolean | null
+          trip_id: string
+          updated_at?: string
+        }
+        Update: {
+          allocated_amount?: number
+          category?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          is_ai_suggested?: boolean | null
+          trip_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_budget_categories_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
             referencedRelation: "trips"
