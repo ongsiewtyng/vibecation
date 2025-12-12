@@ -58,7 +58,7 @@ export function SmartTripDialog({ open, onClose, onSuccess, prefillFromFlight }:
     async function fetchCities() {
       try {
         const { data } = await supabase.functions.invoke('cities-for-country', {
-          body: { country }
+          body: { countryName: country }
         });
         if (data?.cities) {
           setCityOptions(data.cities);
