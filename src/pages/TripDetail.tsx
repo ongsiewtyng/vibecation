@@ -13,6 +13,7 @@ import TransportTab from "@/components/trip-details/TransportTab";
 import ExpensesTab from "@/components/trip-details/ExpensesTab";
 import PackingTab from "@/components/trip-details/PackingTab";
 import AttachmentsTab from "@/components/trip-details/AttachmentsTab";
+import { BudgetAllocationTab } from "@/components/trip-details/BudgetAllocationTab";
 import TripTimeline from "@/components/trip-details/TripTimeline";
 import TripSharingDialog from "@/components/sharing/TripSharingDialog";
 import WeatherForecast from "@/components/trip-details/WeatherForecast";
@@ -210,7 +211,8 @@ const TripDetail = () => {
                         <TabsTrigger value="timeline">Timeline</TabsTrigger>
                         <TabsTrigger value="accommodations">Stays</TabsTrigger>
                         <TabsTrigger value="transport">Transport</TabsTrigger>
-                        <TabsTrigger value="expenses">Budget</TabsTrigger>
+                        <TabsTrigger value="budget">Budget</TabsTrigger>
+                        <TabsTrigger value="expenses">Expenses</TabsTrigger>
                         <TabsTrigger value="packing">Packing</TabsTrigger>
                         <TabsTrigger value="attachments">Files</TabsTrigger>
                     </TabsList>
@@ -229,6 +231,14 @@ const TripDetail = () => {
 
                     <TabsContent value="transport">
                         <TransportTab tripId={id!}/>
+                    </TabsContent>
+
+                    <TabsContent value="budget">
+                        <BudgetAllocationTab 
+                            tripId={id!} 
+                            totalBudget={trip.budget}
+                            currency={tripCurrencyCode}
+                        />
                     </TabsContent>
 
                     <TabsContent value="expenses">

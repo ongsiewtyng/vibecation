@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Upload, Calendar, Plane, MapPin, Navigation, Search, Sparkles } from "lucide-react";
+import { Plus, Upload, Calendar, Plane, MapPin, Navigation, Search, Sparkles, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,6 +9,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import TripCard from "@/components/trips/TripCard";
 import TripFormDialog from "@/components/trips/TripFormDialog";
 import TripTemplatesDialog from "@/components/trips/TripTemplatesDialog";
+import { SmartTripDialog } from "@/components/trips/SmartTripDialog";
 import ImportDialog from "@/components/import/ImportDialog";
 import { format, isPast, isFuture, differenceInDays } from "date-fns";
 
@@ -16,6 +17,7 @@ const Index = () => {
   const [showTripForm, setShowTripForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showSmartTrip, setShowSmartTrip] = useState(false);
   const [editingTrip, setEditingTrip] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "upcoming" | "current" | "past">("all");
@@ -83,6 +85,10 @@ const Index = () => {
             </div>
           </div>
           <div className="flex gap-2">
+            <Button onClick={() => setShowSmartTrip(true)} className="bg-gradient-to-r from-primary to-accent">
+              <Wand2 className="mr-2 h-4 w-4" />
+              Smart Trip
+            </Button>
             <Button variant="outline" onClick={() => setShowTemplates(true)}>
               <Sparkles className="mr-2 h-4 w-4" />
               Templates
@@ -259,6 +265,12 @@ const Index = () => {
       <TripTemplatesDialog
         open={showTemplates}
         onClose={() => setShowTemplates(false)}
+        onSuccess={refetch}
+      />
+
+      <SmartTripDialog
+        open={showSmartTrip}
+        onClose={() => setShowSmartTrip(false)}
         onSuccess={refetch}
       />
     </div>
