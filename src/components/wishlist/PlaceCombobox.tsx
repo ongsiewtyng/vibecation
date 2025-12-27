@@ -19,7 +19,9 @@ export function PlaceCombobox({
   const [open, setOpen] = React.useState(false);
   const [inputValue, setInputValue] = React.useState("");
   const display = value || "Select or type place name...";
-  const list = Array.from(new Set(options)).sort((a, b) => a.localeCompare(b));
+  // Ensure options are strings before sorting
+  const stringOptions = options.filter((opt): opt is string => typeof opt === 'string');
+  const list = Array.from(new Set(stringOptions)).sort((a, b) => a.localeCompare(b));
 
   const handleSelect = (selectedValue: string) => {
     onChange(selectedValue);
