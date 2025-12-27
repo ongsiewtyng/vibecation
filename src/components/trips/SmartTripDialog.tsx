@@ -6,14 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { CountryCombobox } from "@/components/shared/CountryCombobox";
-import { CityCombobox } from "@/components/explore/CityCombobox";
-import { Sparkles, Loader2, Plane, AlertCircle } from "lucide-react";
+import { Sparkles, Loader2, Plane, AlertCircle, MapPin, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { generateTripTemplate, createTripWithTemplate, TripTemplateResult } from "@/lib/tripTemplateGenerator";
 import { format, differenceInDays } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
+import PlaceAutocomplete from "@/components/maps/PlaceAutocomplete";
 
 interface SmartTripDialogProps {
   open: boolean;
@@ -32,11 +33,17 @@ interface SmartTripDialogProps {
 
 type GenerationStep = 'idle' | 'generating' | 'creating' | 'success' | 'error';
 
+interface CityPhoto {
+  url: string;
+  attribution: string;
+}
+
 export function SmartTripDialog({ open, onClose, onSuccess, prefillFromFlight }: SmartTripDialogProps) {
   const navigate = useNavigate();
   const [country, setCountry] = useState<string>(prefillFromFlight?.destination ? "" : "");
   const [city, setCity] = useState<string>(prefillFromFlight?.destination || "");
-  const [cityOptions, setCityOptions] = useState<string[]>([]);
+  const [cityPhoto, setCityPhoto] = useState<CityPhoto | null>(null);
+  const [loadingPhoto, setLoadingPhoto] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(
     prefillFromFlight?.flightDate 
       ? { from: new Date(prefillFromFlight.flightDate), to: undefined }
@@ -48,28 +55,67 @@ export function SmartTripDialog({ open, onClose, onSuccess, prefillFromFlight }:
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [generatedTemplate, setGeneratedTemplate] = useState<TripTemplateResult | null>(null);
 
-  // Fetch cities when country changes
+  // Fetch city photo when city changes
   useEffect(() => {
-    if (!country) {
-      setCityOptions([]);
+    if (!city || !country) {
+      setCityPhoto(null);
       return;
     }
     
-    async function fetchCities() {
+    async function fetchCityPhoto() {
+      setLoadingPhoto(true);
       try {
-        const { data } = await supabase.functions.invoke('cities-for-country', {
-          body: { countryName: country }
+        const { data } = await supabase.functions.invoke('fetch-attractions', {
+          body: { 
+            country: country,
+            query: `${city} city skyline landmark`,
+            limit: 1
+          }
         });
-        if (data?.cities) {
-          setCityOptions(data.cities);
+        
+        if (data?.attractions?.[0]?.photo_reference) {
+          // Use Google Places photo API
+          const photoRef = data.attractions[0].photo_reference;
+          setCityPhoto({
+            url: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photoRef}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}`,
+            attribution: data.attractions[0].name || city
+          });
+        } else {
+          // Use a fallback image based on destination
+          setCityPhoto({
+            url: `https://source.unsplash.com/800x400/?${encodeURIComponent(city + ' city skyline')}`,
+            attribution: city
+          });
         }
       } catch (error) {
-        console.error('Error fetching cities:', error);
+        console.error('Error fetching city photo:', error);
+        // Fallback to Unsplash
+        setCityPhoto({
+          url: `https://source.unsplash.com/800x400/?${encodeURIComponent(city + ' travel destination')}`,
+          attribution: city
+        });
+      } finally {
+        setLoadingPhoto(false);
       }
     }
     
-    fetchCities();
-  }, [country]);
+    const debounce = setTimeout(fetchCityPhoto, 500);
+    return () => clearTimeout(debounce);
+  }, [city, country]);
+
+  const handlePlaceSelect = (place: { name: string; lat: number; lng: number; formattedAddress?: string }) => {
+    setCity(place.name);
+    // Try to extract country from formatted address
+    if (place.formattedAddress) {
+      const parts = place.formattedAddress.split(',').map(p => p.trim());
+      if (parts.length > 0) {
+        const possibleCountry = parts[parts.length - 1];
+        if (possibleCountry && !country) {
+          setCountry(possibleCountry);
+        }
+      }
+    }
+  };
 
   const handleGenerate = async () => {
     if (!city || !country || !dateRange?.from || !dateRange?.to) {
@@ -144,6 +190,7 @@ export function SmartTripDialog({ open, onClose, onSuccess, prefillFromFlight }:
     setStep('idle');
     setErrorMessage("");
     setGeneratedTemplate(null);
+    setCityPhoto(null);
     onClose();
   };
 
@@ -155,7 +202,7 @@ export function SmartTripDialog({ open, onClose, onSuccess, prefillFromFlight }:
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
@@ -176,6 +223,38 @@ export function SmartTripDialog({ open, onClose, onSuccess, prefillFromFlight }:
             </Alert>
           )}
 
+          {/* City Preview Image */}
+          {(city && country) && (
+            <div className="relative rounded-lg overflow-hidden bg-muted aspect-[2/1]">
+              {loadingPhoto ? (
+                <Skeleton className="w-full h-full" />
+              ) : cityPhoto ? (
+                <>
+                  <img 
+                    src={cityPhoto.url} 
+                    alt={`${city}, ${country}`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback if image fails to load
+                      (e.target as HTMLImageElement).src = `https://source.unsplash.com/800x400/?${encodeURIComponent(city + ' travel')}`;
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  <div className="absolute bottom-3 left-3 text-white">
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="h-4 w-4" />
+                      <span className="font-semibold">{city}, {country}</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Country</Label>
@@ -184,17 +263,20 @@ export function SmartTripDialog({ open, onClose, onSuccess, prefillFromFlight }:
                 onChange={(v) => {
                   setCountry(v);
                   setCity('');
+                  setCityPhoto(null);
                 }}
                 disabled={isGenerating}
               />
             </div>
             <div className="space-y-2">
               <Label>City / Destination</Label>
-              <CityCombobox
-                options={cityOptions}
+              <PlaceAutocomplete
                 value={city}
                 onChange={setCity}
-                disabled={isGenerating || !country}
+                onPlaceSelect={handlePlaceSelect}
+                placeholder="Search for a city..."
+                disabled={isGenerating}
+                restrictToCountry={country}
               />
             </div>
           </div>

@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { countryCode, countryName, limit = 20 } = await req.json();
+    const { countryCode, countryName, limit = 30 } = await req.json();
     
     if (!countryName && !countryCode) {
       return new Response(
@@ -31,8 +31,8 @@ serve(async (req) => {
     const country = countryName || countryCode;
     console.log('Fetching cities for country:', country);
 
-    // Use Places API v1 Text Search
-    const textQuery = `city in ${country}`;
+    // Use Places API v1 Text Search with better query for cities
+    const textQuery = `popular cities and tourist destinations in ${country}`;
     const url = 'https://places.googleapis.com/v1/places:searchText';
     
     const response = await fetch(url, {
@@ -40,42 +40,67 @@ serve(async (req) => {
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
-        'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.formattedAddress,places.types'
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.formattedAddress,places.types,places.photos'
       },
       body: JSON.stringify({
         textQuery,
         languageCode: 'en',
-        maxResultCount: limit
+        maxResultCount: limit,
+        includedType: 'locality'
       })
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Google Places API error:', response.status, errorText);
+      
+      // Fallback: try simpler query without includedType
+      console.log('Trying fallback query...');
+      const fallbackResponse = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.formattedAddress,places.types,places.photos'
+        },
+        body: JSON.stringify({
+          textQuery: `major cities in ${country}`,
+          languageCode: 'en',
+          maxResultCount: limit
+        })
+      });
+
+      if (!fallbackResponse.ok) {
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch cities', cities: [] }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const fallbackData = await fallbackResponse.json();
+      const cityNames = (fallbackData.places || [])
+        .map((place: any) => place.displayName?.text)
+        .filter((name: string | undefined): name is string => !!name && name.length > 0);
+      
+      const uniqueCities = [...new Set(cityNames)].slice(0, limit);
+      console.log('Fallback returning', uniqueCities.length, 'cities');
+      
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch cities', detail: errorText }),
-        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ cities: uniqueCities }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const data = await response.json();
     console.log('Places API returned', data.places?.length || 0, 'results');
 
-    // Map all places - be lenient with types to get actual results
-    const allPlaces = (data.places || [])
-      .map((place: any) => ({
-        name: place.displayName?.text || '',
-        lat: place.location?.latitude || 0,
-        lng: place.location?.longitude || 0,
-        formattedAddress: place.formattedAddress || '',
-        types: place.types || []
-      }))
-      .filter((place: any) => place.name); // Only filter out empty names
+    // Extract just the city names as strings
+    const cityNames = (data.places || [])
+      .map((place: any) => place.displayName?.text)
+      .filter((name: string | undefined): name is string => !!name && name.length > 0);
 
-    // Deduplicate by name (case-insensitive)
-    const uniqueCities = Array.from(
-      new Map(allPlaces.map((city: any) => [city.name.toLowerCase(), city])).values()
-    ).slice(0, limit);
+    // Deduplicate
+    const uniqueCities = [...new Set(cityNames)].slice(0, limit);
 
     console.log('Returning', uniqueCities.length, 'unique cities');
 
@@ -87,8 +112,8 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in cities-for-country function:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error', cities: [] }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
