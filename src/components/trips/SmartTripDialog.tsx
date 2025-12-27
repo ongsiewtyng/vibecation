@@ -69,7 +69,7 @@ export function SmartTripDialog({ open, onClose, onSuccess, prefillFromFlight }:
           body: { 
             country: country,
             city: city,
-            type: 'landmark'
+            type: 'tourist_attraction'
           }
         });
         
