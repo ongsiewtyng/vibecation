@@ -12,7 +12,15 @@ serve(async (req) => {
   }
 
   try {
-    const { country, city, radius = 3000, type = 'tourist_attraction' } = await req.json();
+    const { country, city, radius = 3000, type: rawType } = await req.json();
+
+    // Normalize unsupported/alias types for Places API v1
+    const type = (() => {
+      const t = (rawType ?? 'tourist_attraction').toString().trim();
+      // "landmark" is NOT a valid Places API v1 type; treat it as tourist_attraction.
+      if (t.toLowerCase() === 'landmark') return 'tourist_attraction';
+      return t || 'tourist_attraction';
+    })();
     
     if (!country) {
       return new Response(

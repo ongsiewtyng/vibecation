@@ -57,29 +57,33 @@ export function SmartTripDialog({ open, onClose, onSuccess, prefillFromFlight }:
 
   // Fetch city photo when city changes
   useEffect(() => {
-    if (!city || !country) {
+    const trimmedCity = city.trim();
+
+    if (!trimmedCity || !country) {
       setCityPhoto(null);
       return;
     }
+
+    // Avoid calling the edge function for 1-character inputs while the user is still typing.
+    if (trimmedCity.length < 2) return;
     
     async function fetchCityPhoto() {
       setLoadingPhoto(true);
       try {
         const { data, error } = await supabase.functions.invoke('fetch-attractions', {
-          body: { 
-            country: country,
-            city: city,
-            type: 'tourist_attraction'
-          }
+          body: {
+            country,
+            city: trimmedCity,
+          },
         });
+
+        if (error) throw error;
         
         if (data?.attractions?.[0]?.photo_reference) {
-          // Use Google Places photo API - photo_reference from v1 API is the full resource name
-          const photoRef = data.attractions[0].photo_reference;
-          // For Places API v1, we need to use the new photo endpoint
+          // Use a free, keyless image source to avoid exposing API keys in the client.
           setCityPhoto({
-            url: `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=800&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}`,
-            attribution: data.attractions[0].name || city
+            url: `https://source.unsplash.com/800x400/?${encodeURIComponent(`${trimmedCity} ${country} skyline`)}`,
+            attribution: data.attractions[0].name || trimmedCity,
           });
         } else {
           // Use a fallback image based on destination
