@@ -83,14 +83,16 @@ function sortTimelineEntries(entries: TimelineEntry[]): TimelineEntry[] {
     if (a.type === 'stay-checkout' && b.type !== 'stay-checkout') return 1;
     if (b.type === 'stay-checkout' && a.type !== 'stay-checkout') return -1;
     
-    // Sort by time if available
-    if (a.time && b.time) {
+    // Sort by time if available (ensure both are strings)
+    if (a.time && b.time && typeof a.time === 'string' && typeof b.time === 'string') {
       return a.time.localeCompare(b.time);
     }
     
     // Sort by time of day
-    const aOrder = a.timeOfDay ? timeOfDayOrder[a.timeOfDay as keyof typeof timeOfDayOrder] ?? 3 : 3;
-    const bOrder = b.timeOfDay ? timeOfDayOrder[b.timeOfDay as keyof typeof timeOfDayOrder] ?? 3 : 3;
+    const aTimeOfDay = typeof a.timeOfDay === 'string' ? a.timeOfDay : null;
+    const bTimeOfDay = typeof b.timeOfDay === 'string' ? b.timeOfDay : null;
+    const aOrder = aTimeOfDay ? timeOfDayOrder[aTimeOfDay as keyof typeof timeOfDayOrder] ?? 3 : 3;
+    const bOrder = bTimeOfDay ? timeOfDayOrder[bTimeOfDay as keyof typeof timeOfDayOrder] ?? 3 : 3;
     return aOrder - bOrder;
   });
 }
