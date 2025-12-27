@@ -55,7 +55,7 @@ export function SmartTripDialog({ open, onClose, onSuccess, prefillFromFlight }:
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [generatedTemplate, setGeneratedTemplate] = useState<TripTemplateResult | null>(null);
 
-  // Fetch city photo when city changes
+  // Fetch city photo when city changes using the dedicated edge function
   useEffect(() => {
     const trimmedCity = city.trim();
 
@@ -64,47 +64,43 @@ export function SmartTripDialog({ open, onClose, onSuccess, prefillFromFlight }:
       return;
     }
 
-    // Avoid calling the edge function for 1-character inputs while the user is still typing.
+    // Avoid calling the edge function for short inputs while user is typing
     if (trimmedCity.length < 2) return;
     
     async function fetchCityPhoto() {
       setLoadingPhoto(true);
       try {
-        const { data, error } = await supabase.functions.invoke('fetch-attractions', {
-          body: {
-            country,
-            city: trimmedCity,
-          },
+        const { data, error } = await supabase.functions.invoke('fetch-city-photo', {
+          body: { city: trimmedCity, country },
         });
 
         if (error) throw error;
         
-        if (data?.attractions?.[0]?.photo_reference) {
-          // Use a free, keyless image source to avoid exposing API keys in the client.
+        if (data?.photoUrl) {
           setCityPhoto({
-            url: `https://source.unsplash.com/800x400/?${encodeURIComponent(`${trimmedCity} ${country} skyline`)}`,
-            attribution: data.attractions[0].name || trimmedCity,
+            url: data.photoUrl,
+            attribution: data.attribution || trimmedCity,
           });
         } else {
-          // Use a fallback image based on destination
+          // Fallback to Unsplash if no photo from API
           setCityPhoto({
-            url: `https://source.unsplash.com/800x400/?${encodeURIComponent(city + ' city skyline')}`,
-            attribution: city
+            url: `https://source.unsplash.com/800x400/?${encodeURIComponent(`${trimmedCity} ${country} skyline`)}`,
+            attribution: trimmedCity
           });
         }
       } catch (error) {
         console.error('Error fetching city photo:', error);
         // Fallback to Unsplash
         setCityPhoto({
-          url: `https://source.unsplash.com/800x400/?${encodeURIComponent(city + ' travel destination')}`,
-          attribution: city
+          url: `https://source.unsplash.com/800x400/?${encodeURIComponent(`${trimmedCity} travel destination`)}`,
+          attribution: trimmedCity
         });
       } finally {
         setLoadingPhoto(false);
       }
     }
     
-    const debounce = setTimeout(fetchCityPhoto, 500);
+    const debounce = setTimeout(fetchCityPhoto, 600);
     return () => clearTimeout(debounce);
   }, [city, country]);
 
