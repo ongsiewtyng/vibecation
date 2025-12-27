@@ -65,19 +65,20 @@ export function SmartTripDialog({ open, onClose, onSuccess, prefillFromFlight }:
     async function fetchCityPhoto() {
       setLoadingPhoto(true);
       try {
-        const { data } = await supabase.functions.invoke('fetch-attractions', {
+        const { data, error } = await supabase.functions.invoke('fetch-attractions', {
           body: { 
             country: country,
-            query: `${city} city skyline landmark`,
-            limit: 1
+            city: city,
+            type: 'landmark'
           }
         });
         
         if (data?.attractions?.[0]?.photo_reference) {
-          // Use Google Places photo API
+          // Use Google Places photo API - photo_reference from v1 API is the full resource name
           const photoRef = data.attractions[0].photo_reference;
+          // For Places API v1, we need to use the new photo endpoint
           setCityPhoto({
-            url: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photoRef}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}`,
+            url: `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=800&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}`,
             attribution: data.attractions[0].name || city
           });
         } else {
