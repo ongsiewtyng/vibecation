@@ -7,100 +7,148 @@ import { Card, CardContent } from "@/components/ui/card";
 import { differenceInDays } from "date-fns";
 import ItineraryFormDialog from "./ItineraryFormDialog";
 import ItineraryTimeline from "./ItineraryTimeline";
+import AccommodationFormDialog from "./AccommodationFormDialog";
 import { useToast } from "@/hooks/use-toast";
 
 const ItineraryTab = ({ tripId, trip }: { tripId: string; trip: any }) => {
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editItem, setEditItem] = useState<any>(null);
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [editItem, setEditItem] = useState<any>(null);
 
-  const { data: items = [] } = useQuery({
-    queryKey: ["itinerary", tripId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("itinerary_items")
-        .select("*")
-        .eq("trip_id", tripId)
-        .order("day_number", { ascending: true })
-        .order("time", { ascending: true, nullsFirst: false });
-      if (error) throw error;
-      return data;
-    },
-  });
+    // ✅ new: stay edit modal state
+    const [stayDialogOpen, setStayDialogOpen] = useState(false);
+    const [editStay, setEditStay] = useState<any>(null);
 
-  const { data: accommodations = [] } = useQuery({
-    queryKey: ["accommodations", tripId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("accommodations")
-        .select("*")
-        .eq("trip_id", tripId)
-        .order("check_in", { ascending: true });
-      if (error) throw error;
-      return data;
-    },
-  });
+    const { toast } = useToast();
+    const queryClient = useQueryClient();
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("itinerary_items").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["itinerary", tripId] });
-      toast({ title: "Activity deleted" });
-    },
-  });
+    const { data: items = [] } = useQuery({
+        queryKey: ["itinerary", tripId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from("itinerary_items")
+                .select("*")
+                .eq("trip_id", tripId)
+                .order("day_number", { ascending: true })
+                .order("time", { ascending: true, nullsFirst: false });
 
-  const handleEditItem = (item: any) => {
-    setEditItem(item);
-    setDialogOpen(true);
-  };
+            if (error) throw error;
+            return data;
+        },
+    });
 
-  const handleDeleteItem = (id: string) => {
-    deleteMutation.mutate(id);
-  };
+    const { data: accommodations = [] } = useQuery({
+        queryKey: ["accommodations", tripId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from("accommodations")
+                .select("*")
+                .eq("trip_id", tripId)
+                .order("check_in", { ascending: true });
 
-  const days = differenceInDays(new Date(trip.end_date), new Date(trip.start_date)) + 1;
+            if (error) throw error;
+            return data;
+        },
+    });
 
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">{days} Day Itinerary</h2>
-        <Button size="sm" onClick={() => { setEditItem(null); setDialogOpen(true); }}>
-          <Plus className="mr-2 h-4 w-4" />Add Activity
-        </Button>
-      </div>
+    const deleteMutation = useMutation({
+        mutationFn: async (id: string) => {
+            const { error } = await supabase
+                .from("itinerary_items")
+                .delete()
+                .eq("id", id);
 
-      {items.length === 0 && accommodations.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground mb-4">No itinerary items yet</p>
-            <Button variant="outline" onClick={() => { setEditItem(null); setDialogOpen(true); }}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add your first activity
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <ItineraryTimeline
-          items={items}
-          accommodations={accommodations}
-          tripStartDate={trip.start_date}
-          onEditItem={handleEditItem}
-          onDeleteItem={handleDeleteItem}
-        />
-      )}
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["itinerary", tripId] });
+            toast({ title: "Activity deleted" });
+        },
+    });
 
-      <ItineraryFormDialog 
-        open={dialogOpen} 
-        onOpenChange={setDialogOpen} 
-        tripId={tripId} 
-        item={editItem} 
-      />
-    </div>
-  );
+    const handleEditItem = (item: any) => {
+        setEditItem(item);
+        setDialogOpen(true);
+    };
+
+    const handleDeleteItem = (id: string) => {
+        deleteMutation.mutate(id);
+    };
+
+    // ✅ new: open accommodation modal from timeline pencil
+    const handleEditStay = (stay: any) => {
+        setEditStay(stay);
+        setStayDialogOpen(true);
+    };
+
+    const days =
+        differenceInDays(new Date(trip.end_date), new Date(trip.start_date)) + 1;
+
+    return (
+        <div className="space-y-4">
+            <div className="flex justify-between items-center">
+                <h2 className="text-xl font-semibold">{days} Day Itinerary</h2>
+
+                <Button
+                    size="sm"
+                    onClick={() => {
+                        setEditItem(null);
+                        setDialogOpen(true);
+                    }}
+                >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Activity
+                </Button>
+            </div>
+
+            {items.length === 0 && accommodations.length === 0 ? (
+                <Card>
+                    <CardContent className="py-12 text-center">
+                        <p className="text-muted-foreground mb-4">
+                            No itinerary items yet
+                        </p>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setEditItem(null);
+                                setDialogOpen(true);
+                            }}
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add your first activity
+                        </Button>
+                    </CardContent>
+                </Card>
+            ) : (
+                <ItineraryTimeline
+                    items={items}
+                    accommodations={accommodations}
+                    tripStartDate={trip.start_date}
+                    onEditItem={handleEditItem}
+                    onDeleteItem={handleDeleteItem}
+                    onEditStay={handleEditStay} // ✅ IMPORTANT
+                />
+            )}
+
+            {/* Activity modal */}
+            <ItineraryFormDialog
+                open={dialogOpen}
+                onOpenChange={setDialogOpen}
+                tripId={tripId}
+                item={editItem}
+                tripStartDate={trip.start_date}
+                tripEndDate={trip.end_date}
+            />
+
+
+            {/* ✅ Stay modal (so itinerary stay pencil works and pre-fills) */}
+            <AccommodationFormDialog
+                open={stayDialogOpen}
+                onOpenChange={setStayDialogOpen}
+                tripId={tripId}
+                item={editStay}
+            />
+        </div>
+    );
 };
 
 export default ItineraryTab;
