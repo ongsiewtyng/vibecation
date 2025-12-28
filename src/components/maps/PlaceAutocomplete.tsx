@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { GOOGLE_MAPS_API_KEY } from "@/config/maps";
 
@@ -25,6 +25,7 @@ const PlaceAutocomplete = ({
 }: PlaceAutocompleteProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<any>(null);
+  const pacContainerObserverRef = useRef<MutationObserver | null>(null);
   const [loading, setLoading] = useState(true);
   const [internalValue, setInternalValue] = useState(value);
 
@@ -33,6 +34,7 @@ const PlaceAutocomplete = ({
     setInternalValue(value);
   }, [value]);
 
+  // Load Google Maps script
   useEffect(() => {
     const script = document.createElement("script");
     script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
@@ -47,6 +49,34 @@ const PlaceAutocomplete = ({
     }
   }, []);
 
+  // Handle place selection
+  const handlePlaceChanged = useCallback(() => {
+    if (!autocompleteRef.current) return;
+    
+    const place = autocompleteRef.current.getPlace();
+    if (place?.geometry) {
+      const cityName = place.name || 
+        place.address_components?.find((c: any) => c.types.includes('locality'))?.long_name || 
+        '';
+      
+      // Update internal state and notify parent
+      setInternalValue(cityName);
+      onChange?.(cityName);
+      onPlaceSelect({
+        name: cityName,
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng(),
+        formattedAddress: place.formatted_address
+      });
+
+      // Blur the input to close dropdown
+      if (inputRef.current) {
+        inputRef.current.blur();
+      }
+    }
+  }, [onChange, onPlaceSelect]);
+
+  // Setup autocomplete
   useEffect(() => {
     if (!loading && inputRef.current && (window as any).google) {
       // Clean up previous autocomplete
@@ -62,7 +92,6 @@ const PlaceAutocomplete = ({
       
       // Only add country restriction if we have a valid ISO code
       if (countryRestriction) {
-        // Try to get ISO code from country name
         const countryCode = getCountryCode(countryRestriction);
         if (countryCode) {
           options.componentRestrictions = { country: countryCode };
@@ -74,22 +103,33 @@ const PlaceAutocomplete = ({
         options
       );
 
-      autocompleteRef.current.addListener("place_changed", () => {
-        const place = autocompleteRef.current.getPlace();
-        if (place.geometry) {
-          const cityName = place.name || place.address_components?.find((c: any) => c.types.includes('locality'))?.long_name || '';
-          setInternalValue(cityName);
-          onChange?.(cityName);
-          onPlaceSelect({
-            name: cityName,
-            lat: place.geometry.location.lat(),
-            lng: place.geometry.location.lng(),
-            formattedAddress: place.formatted_address
+      autocompleteRef.current.addListener("place_changed", handlePlaceChanged);
+
+      // Fix: Observe and patch pac-container clicks to properly trigger selection
+      // This ensures clicking on a suggestion fills the input and closes the dropdown
+      setTimeout(() => {
+        const pacContainers = document.querySelectorAll('.pac-container');
+        pacContainers.forEach((container) => {
+          container.addEventListener('mousedown', (e) => {
+            // Prevent the input from losing focus before selection completes
+            e.preventDefault();
           });
-        }
-      });
+        });
+      }, 500);
     }
-  }, [loading, types, restrictToCountry, country]);
+  }, [loading, types, restrictToCountry, country, handlePlaceChanged]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (autocompleteRef.current) {
+        (window as any).google?.maps?.event?.clearInstanceListeners(autocompleteRef.current);
+      }
+      if (pacContainerObserverRef.current) {
+        pacContainerObserverRef.current.disconnect();
+      }
+    };
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
@@ -105,6 +145,7 @@ const PlaceAutocomplete = ({
       onChange={handleInputChange}
       disabled={disabled || loading}
       className="w-full"
+      autoComplete="off"
     />
   );
 };

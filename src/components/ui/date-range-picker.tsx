@@ -49,7 +49,7 @@ export function DateRangePicker({ dateRange, onDateRangeChange, disabled }: Date
           mode="range"
           selected={dateRange}
           onSelect={onDateRangeChange}
-          numberOfMonths={2}
+          numberOfMonths={1}
           initialFocus
           className="pointer-events-auto"
         />

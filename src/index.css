@@ -9,6 +9,69 @@
 .animate-shimmer {
   animation: shimmer 2s infinite linear;
 }
+
+/* Google Places Autocomplete Dropdown Styling */
+.pac-container {
+  z-index: 10000 !important;
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  background-color: hsl(var(--background));
+  font-family: inherit;
+  margin-top: 4px;
+}
+
+.pac-container .pac-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-top: 1px solid hsl(var(--border) / 0.5);
+  color: hsl(var(--foreground));
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.pac-container .pac-item:first-child {
+  border-top: none;
+}
+
+.pac-container .pac-item:hover,
+.pac-container .pac-item.pac-item-selected {
+  background-color: hsl(var(--accent));
+}
+
+.pac-container .pac-item .pac-icon {
+  display: none;
+}
+
+.pac-container .pac-item .pac-item-query {
+  color: hsl(var(--foreground));
+  font-weight: 500;
+}
+
+.pac-container .pac-item .pac-matched {
+  font-weight: 600;
+}
+
+.pac-container::after {
+  display: none !important;
+}
+
+/* Dark mode support for Google Places */
+.dark .pac-container {
+  background-color: hsl(var(--background));
+  border-color: hsl(var(--border));
+}
+
+.dark .pac-container .pac-item {
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.dark .pac-container .pac-item:hover,
+.dark .pac-container .pac-item.pac-item-selected {
+  background-color: hsl(var(--accent));
+}
+
 @tailwind components;
 @tailwind utilities;
 
