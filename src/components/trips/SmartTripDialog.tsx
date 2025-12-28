@@ -228,7 +228,7 @@ export function SmartTripDialog({ open, onClose, onSuccess, prefillFromFlight }:
           {(city && country) && (
             <div className="relative rounded-lg overflow-hidden bg-muted aspect-[2/1]">
               {loadingPhoto ? (
-                <Skeleton className="w-full h-full" />
+                <div className="w-full h-full animate-pulse bg-gradient-to-r from-muted via-muted-foreground/10 to-muted bg-[length:200%_100%] animate-shimmer" />
               ) : cityPhoto ? (
                 <>
                   <img 
