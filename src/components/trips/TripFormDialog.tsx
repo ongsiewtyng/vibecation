@@ -8,11 +8,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { CountryCombobox } from "@/components/shared/CountryCombobox";
-import { CityCombobox } from "@/components/explore/CityCombobox";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { DateRange } from "react-day-picker";
 import { format, differenceInDays } from "date-fns";
-import { Info } from "lucide-react";
+import { Info, MapPin, ImageIcon } from "lucide-react";
+import PlaceAutocomplete from "@/components/maps/PlaceAutocomplete";
+
+interface CityPhoto {
+  url: string;
+  attribution: string;
+}
 
 interface TripFormDialogProps {
   open: boolean;
@@ -28,25 +33,67 @@ const TripFormDialog = ({ open, onClose, trip, onSuccess }: TripFormDialogProps)
   const [budget, setBudget] = useState("");
   const [notes, setNotes] = useState("");
   const [autoTitle, setAutoTitle] = useState("");
+  const [cityPhoto, setCityPhoto] = useState<CityPhoto | null>(null);
+  const [loadingPhoto, setLoadingPhoto] = useState(false);
 
-  // Fetch cities when country changes
-  const { data: cities = [], isLoading: citiesLoading } = useQuery({
-    queryKey: ["cities", country],
-    queryFn: async () => {
-      if (!country) return [];
-      
-      const { data, error } = await supabase.functions.invoke('cities-for-country', {
-        body: { countryName: country, limit: 50 }
-      });
+  // Fetch city photo when city changes
+  useEffect(() => {
+    const trimmedCity = city.trim();
 
-      if (error) {
-        console.error('Error fetching cities:', error);
-        return [];
+    if (!trimmedCity || !country) {
+      setCityPhoto(null);
+      return;
+    }
+
+    if (trimmedCity.length < 2) return;
+    
+    async function fetchCityPhoto() {
+      setLoadingPhoto(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('fetch-city-photo', {
+          body: { city: trimmedCity, country },
+        });
+
+        if (error) throw error;
+        
+        if (data?.photoUrl) {
+          setCityPhoto({
+            url: data.photoUrl,
+            attribution: data.attribution || trimmedCity,
+          });
+        } else {
+          setCityPhoto({
+            url: `https://source.unsplash.com/800x400/?${encodeURIComponent(`${trimmedCity} ${country} skyline`)}`,
+            attribution: trimmedCity
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching city photo:', error);
+        setCityPhoto({
+          url: `https://source.unsplash.com/800x400/?${encodeURIComponent(`${trimmedCity} travel destination`)}`,
+          attribution: trimmedCity
+        });
+      } finally {
+        setLoadingPhoto(false);
       }
-      return (data?.cities ?? []).map((c: any) => c.name);
-    },
-    enabled: !!country,
-  });
+    }
+    
+    const debounce = setTimeout(fetchCityPhoto, 600);
+    return () => clearTimeout(debounce);
+  }, [city, country]);
+
+  const handlePlaceSelect = (place: { name: string; lat: number; lng: number; formattedAddress?: string }) => {
+    setCity(place.name);
+    if (place.formattedAddress) {
+      const parts = place.formattedAddress.split(',').map(p => p.trim());
+      if (parts.length > 0) {
+        const possibleCountry = parts[parts.length - 1];
+        if (possibleCountry && !country) {
+          setCountry(possibleCountry);
+        }
+      }
+    }
+  };
 
   // Auto-generate title when country, city, and dates change
   useEffect(() => {
@@ -94,6 +141,7 @@ const TripFormDialog = ({ open, onClose, trip, onSuccess }: TripFormDialogProps)
   useEffect(() => {
     if (!trip) {
       setCity("");
+      setCityPhoto(null);
     }
   }, [country, trip]);
 
@@ -160,22 +208,58 @@ const TripFormDialog = ({ open, onClose, trip, onSuccess }: TripFormDialogProps)
             </div>
           )}
 
+          {/* City Preview Image */}
+          {(city && country) && (
+            <div className="relative rounded-lg overflow-hidden bg-muted aspect-[3/1]">
+              {loadingPhoto ? (
+                <div className="w-full h-full animate-pulse bg-gradient-to-r from-muted via-muted-foreground/10 to-muted bg-[length:200%_100%] animate-shimmer" />
+              ) : cityPhoto ? (
+                <>
+                  <img 
+                    src={cityPhoto.url} 
+                    alt={`${city}, ${country}`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = `https://source.unsplash.com/800x400/?${encodeURIComponent(city + ' travel')}`;
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  <div className="absolute bottom-3 left-3 text-white">
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="h-4 w-4" />
+                      <span className="font-semibold">{city}, {country}</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Country *</Label>
               <CountryCombobox
                 value={country}
-                onChange={setCountry}
+                onChange={(v) => {
+                  setCountry(v);
+                  setCity('');
+                  setCityPhoto(null);
+                }}
               />
             </div>
 
             <div className="space-y-2">
               <Label>City *</Label>
-              <CityCombobox
+              <PlaceAutocomplete
                 value={city}
                 onChange={setCity}
-                options={cities}
-                disabled={!country || citiesLoading}
+                onPlaceSelect={handlePlaceSelect}
+                placeholder="Search for a city..."
+                restrictToCountry={country}
               />
             </div>
           </div>
