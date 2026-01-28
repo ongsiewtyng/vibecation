@@ -425,6 +425,138 @@ export type Database = {
           },
         ]
       }
+      sheet_cells: {
+        Row: {
+          col_index: number
+          created_at: string
+          format: Json | null
+          formula: string | null
+          id: string
+          row_index: number
+          sheet_id: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          col_index: number
+          created_at?: string
+          format?: Json | null
+          formula?: string | null
+          id?: string
+          row_index: number
+          sheet_id: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          col_index?: number
+          created_at?: string
+          format?: Json | null
+          formula?: string | null
+          id?: string
+          row_index?: number
+          sheet_id?: string
+          updated_at?: string
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sheet_cells_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: false
+            referencedRelation: "sheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sheet_grid_config: {
+        Row: {
+          col_count: number
+          column_widths: Json | null
+          created_at: string
+          frozen_cols: number | null
+          frozen_rows: number | null
+          id: string
+          row_count: number
+          row_heights: Json | null
+          sheet_id: string
+          updated_at: string
+        }
+        Insert: {
+          col_count?: number
+          column_widths?: Json | null
+          created_at?: string
+          frozen_cols?: number | null
+          frozen_rows?: number | null
+          id?: string
+          row_count?: number
+          row_heights?: Json | null
+          sheet_id: string
+          updated_at?: string
+        }
+        Update: {
+          col_count?: number
+          column_widths?: Json | null
+          created_at?: string
+          frozen_cols?: number | null
+          frozen_rows?: number | null
+          id?: string
+          row_count?: number
+          row_heights?: Json | null
+          sheet_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sheet_grid_config_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: true
+            referencedRelation: "sheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sheets: {
+        Row: {
+          config: Json | null
+          created_at: string
+          id: string
+          position: number
+          title: string
+          type: Database["public"]["Enums"]["sheet_type"]
+          updated_at: string
+          workbook_id: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          id?: string
+          position?: number
+          title?: string
+          type?: Database["public"]["Enums"]["sheet_type"]
+          updated_at?: string
+          workbook_id: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          id?: string
+          position?: number
+          title?: string
+          type?: Database["public"]["Enums"]["sheet_type"]
+          updated_at?: string
+          workbook_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sheets_workbook_id_fkey"
+            columns: ["workbook_id"]
+            isOneToOne: false
+            referencedRelation: "workbooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       template_attractions: {
         Row: {
           created_at: string
@@ -794,6 +926,41 @@ export type Database = {
         }
         Relationships: []
       }
+      workbooks: {
+        Row: {
+          created_at: string
+          id: string
+          owner_id: string | null
+          title: string
+          trip_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          owner_id?: string | null
+          title?: string
+          trip_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          owner_id?: string | null
+          title?: string
+          trip_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workbooks_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -802,6 +969,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      sheet_type: "itinerary" | "blank" | "budget" | "places" | "packing"
       trip_share_role: "viewer" | "editor"
     }
     CompositeTypes: {
@@ -930,6 +1098,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      sheet_type: ["itinerary", "blank", "budget", "places", "packing"],
       trip_share_role: ["viewer", "editor"],
     },
   },

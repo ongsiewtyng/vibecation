@@ -1,4 +1,4 @@
-import {Home, Map, Heart, Moon, Sun, Calendar, Compass, Plane} from "lucide-react";
+import {Home, Map, Heart, Moon, Sun, Calendar, Compass, Plane, FileSpreadsheet} from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useTheme } from "@/components/ThemeProvider";
@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client"; // ⬅️ add this
 
 const menuItems = [
     { title: "Dashboard", url: "/", icon: Home },
+    { title: "Workbooks", url: "/workbooks", icon: FileSpreadsheet },
     { title: "Calendar", url: "/calendar", icon: Calendar },
     { title: "Explore", url: "/explore", icon: Compass },
     { title: "Wishlist", url: "/wishlist", icon: Heart },
