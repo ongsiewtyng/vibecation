@@ -1,4 +1,4 @@
-# 🌴 **Vibecation**
+# 🌴 Vibecation
 
 *A personal travel & itinerary planning web app — built to vibe, plan, and wander.*
 
